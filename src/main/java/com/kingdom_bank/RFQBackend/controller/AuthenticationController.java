@@ -1,8 +1,8 @@
 package com.kingdom_bank.RFQBackend.controller;
 
 import com.google.gson.Gson;
-import com.kingdom_bank.RFQBackend.dto.AuthRequest;
-import com.kingdom_bank.RFQBackend.dto.AuthResponse;
+import com.kingdom_bank.RFQBackend.dto.*;
+import com.kingdom_bank.RFQBackend.service.ApiService;
 import com.kingdom_bank.RFQBackend.service.AuthenticationService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -28,4 +28,15 @@ public class AuthenticationController {
         log.info("RESPONSE: {}", authResponse);
         return  authResponse;
     }
+
+    @PostMapping(value = "/validateOtp", produces = MediaType.APPLICATION_JSON_VALUE)
+    public OtpResponse authenticate(@Valid @RequestBody OtpRequest otpRequest, HttpServletResponse httpServletResponse){
+        log.info("OTP REQUEST :: {}", new Gson().toJson(otpRequest));
+        OtpResponse otpResponse = authenticationService.validateOtp(otpRequest, httpServletResponse);
+        log.info("RESPONSE: {}", otpResponse);
+        return  otpResponse;
+    }
+
+
+
 }

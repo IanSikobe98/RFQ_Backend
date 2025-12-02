@@ -13,6 +13,7 @@ import com.kingdom_bank.RFQBackend.entity.UserLoginLog;
 import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
 import com.kingdom_bank.RFQBackend.enums.JwtClaims;
 import com.kingdom_bank.RFQBackend.repository.UserLoginLogRepo;
+import com.kingdom_bank.RFQBackend.service.ApiService;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,6 +43,7 @@ public class JwtUtil {
 //    private  final ApiService apiService;
 
     private final UserLoginLogRepo loginLogRepository;
+    private final ApiService apiService;
 
     public boolean hasAuthorizationBearer(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
@@ -85,7 +87,7 @@ public class JwtUtil {
         if(jwtVerifier == null){
             jwtVerifier = JWT.require(algorithm)
                     // specify any specific claim validations
-                    .withIssuer("COBS")
+                    .withIssuer("KBRFQ")
                     // reusable verifier instance
                     .build();
         }
@@ -113,10 +115,10 @@ public class JwtUtil {
             log.error("JWT TOKEN FOR API USER:{}, IS INVALID :: {}", JWT.decode(token).getSubject(), exception.getMessage());
             HashMap<String,String> userInfo = new HashMap<>();
             userInfo.put(JwtClaims.USER_ID.getValue(), userId);
-//             ApiResponse apiResponse = apiService.logout(response,false,userInfo);
-//             if(apiResponse.getResponseCode().equals(ApiResponseCode.FAIL)){
-//                 log.info("System failed to update user log in status with error: {}",apiResponse.getResponseMessage());
-//             }
+             ApiResponse apiResponse = apiService.logout(response,false,userInfo);
+             if(apiResponse.getResponseCode().equals(ApiResponseCode.FAIL)){
+                 log.info("System failed to update user log in status with error: {}",apiResponse.getResponseMessage());
+             }
         }
         catch (Exception e) { log.error("Error Occurred During Encryption :: {}", e.getMessage()); }
         return false;

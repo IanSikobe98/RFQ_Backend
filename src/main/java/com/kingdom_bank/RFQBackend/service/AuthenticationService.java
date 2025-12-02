@@ -1,11 +1,13 @@
 package com.kingdom_bank.RFQBackend.service;
 
-import com.kingdom_bank.RFQBackend.dto.AuthRequest;
-import com.kingdom_bank.RFQBackend.dto.AuthResponse;
+import com.kingdom_bank.RFQBackend.config.security.JwtUtil;
+import com.kingdom_bank.RFQBackend.dto.*;
+import com.kingdom_bank.RFQBackend.entity.RolePrivilege;
 import com.kingdom_bank.RFQBackend.entity.Status;
 import com.kingdom_bank.RFQBackend.entity.User;
 import com.kingdom_bank.RFQBackend.entity.UserLoginLog;
 import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
+import com.kingdom_bank.RFQBackend.repository.RolePrivilegeRepo;
 import com.kingdom_bank.RFQBackend.repository.UserLoginLogRepo;
 import com.kingdom_bank.RFQBackend.util.CommonTasks;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
@@ -40,6 +42,8 @@ public class AuthenticationService {
     private final Environment environment;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final JwtUtil jwtUtil;
+    private final RolePrivilegeRepo rolePrivilegeRepo;
 
     @Value("${soa.sms.retries}")
     private String smsRetries;
@@ -185,6 +189,146 @@ public class AuthenticationService {
 
         return response;
     }
+
+    public OtpResponse validateOtp(OtpRequest otpRequest, HttpServletResponse httpServletResponse) {
+        OtpResponse response = new OtpResponse();
+        UserLoginLog userLoginLog = new UserLoginLog();
+        UserInfoDTO userInfoDTO = new UserInfoDTO();
+        try{
+
+            String username = otpRequest.getUsername();
+            String password = commonTasks.AESdecrypt(otpRequest.getPassword());
+            String otp = otpRequest.getOtp();
+
+
+            //Check if user exist
+            User user = userService.getUserCredsByUsername(username);
+
+            if(Objects.isNull(user)){
+                log.error("User Does not exist :: {}",username);
+                httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("User does not exist");
+                return response;
+            }
+
+            userLoginLog = userLoginLogRepo.findDistinctByUser_UserIdAndStatus(user.getUserId(),constantUtil.PENDING);
+
+            if(Objects.isNull(userLoginLog)){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Malicious Activity Detected!");
+                httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return response;
+            }
+
+
+            UsernamePasswordAuthenticationToken userAuthentication =
+                    new UsernamePasswordAuthenticationToken(username, password);
+
+            //Authenticate
+            Authentication authentication = authManager.authenticate(userAuthentication);
+
+            if (authentication.isAuthenticated()) {
+                Object principal = authentication.getPrincipal();
+                    // If authenticated via LDAP
+                    log.info("User successfully authenticated using LDAP");
+            }
+
+
+            if(userLoginLog.getOtpExpiryTime().before(new Date())){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("OTP has Expired");
+                httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+                userLoginLog.setOtpAuthStatus(constantUtil.FAILED);
+                userLoginLog.setDescription("OTP has Expired");
+                userLoginLog.setStatus(constantUtil.INACTIVE);
+                userLoginLogRepo.save(userLoginLog);
+                return response;
+            }
+
+            //validate OTP
+            if(!passwordEncoder.matches(otp,userLoginLog.getOtp())){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("wrong OTP Provided");
+                httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+
+                userLoginLog.setOtpAuthStatus(constantUtil.FAILED);
+                userLoginLog.setDescription("wrong OTP Provided");
+                userLoginLogRepo.save(userLoginLog);
+                return response;
+            }
+
+            String token = jwtUtil.generateToken(user);
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage(user.getUsername()+" signed in successfully");
+            response.setToken(token);
+            userInfoDTO.setUser(user);
+
+            List<RolePrivilege> usersPerms =  rolePrivilegeRepo.findByRole_RoleId(user.getRole().getRoleId());
+            List<String> userPermsArray = new ArrayList<>();
+            usersPerms.stream().forEach(usersPerm -> {
+                userPermsArray.add(usersPerm.getPrivilege().getPrivilegeName());
+            });
+
+            userInfoDTO.setRole(user.getRole().getRoleName());
+            if(!userPermsArray.isEmpty()){
+                userInfoDTO.setUsersPerm(userPermsArray);
+            }
+            response.setUser(userInfoDTO);
+
+            userLoginLog.setOtpAuthStatus(constantUtil.SUCCESS);
+            userLoginLog.setSessionStartTime(new Date());
+            userLoginLog.setSessionId(token);
+            userLoginLog.setStatus(constantUtil.ACTIVE);
+            userLoginLog.setDescription("OTP validated Successfully");
+            userLoginLogRepo.save(userLoginLog);
+
+        }
+        catch (UsernameNotFoundException e){
+            //UsernameNotFoundException occurs when the username is invalid
+            log.error("UsernameNotFound :: {}", e.getMessage());
+//            httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Invalid Username or Password!");
+        }
+        catch (BadCredentialsException e){
+            //BadCredentialsException occurs when the password is invalid
+            userLoginLog.setDescription("Invalid Password");
+            userLoginLog.setAuthStatus(constantUtil.FAILED);
+            userLoginLog.setCreateDate(new Date());
+            userLoginLogRepo.save(userLoginLog);
+
+            log.error("BadCredentialsException :: {}", e.getMessage());
+//            httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Invalid Username or Password!");
+
+        }
+        catch(DisabledException e){
+            //User is deactivated
+            userLoginLog.setDescription("User is deactivated");
+            userLoginLog.setAuthStatus(constantUtil.FAILED);
+            userLoginLog.setCreateDate(new Date());
+            userLoginLogRepo.save(userLoginLog);
+
+            httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            log.error("DisabledException :: {}", e.getMessage());
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Your API Credentials have been deactivated!.");
+        }
+        catch(Exception e){
+            log.error("ERROR OCCURRED DURING LOGIN AUTHENTICATION :: {}" ,e.getMessage());
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry, an authentication Error has occurred! Please Try again later");
+        }
+        return response;
+    }
+
+
     private Date calculateOtpExpiryDate(){
         Date now = new Date();
 
