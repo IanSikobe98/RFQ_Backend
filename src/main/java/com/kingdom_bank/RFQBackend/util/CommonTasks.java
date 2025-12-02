@@ -50,5 +50,9 @@ public class CommonTasks {
         }
     }
 
+    public static String cleanPhone(String oldPhoneNumber){
+        return "254" + oldPhoneNumber.substring(oldPhoneNumber.length() - 9);
+    }
+
 
 }

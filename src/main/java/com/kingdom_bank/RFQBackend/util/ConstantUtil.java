@@ -20,6 +20,8 @@ public class ConstantUtil {
     public Status FAILED;
     public Status SUCCESS;
     public Status OTP_SENT;
+    public Status PENDING_APPROVAL;
+    public Status REJECTED;
 
     @PostConstruct
     public void init() {
@@ -29,5 +31,8 @@ public class ConstantUtil {
         FAILED = commonTasks.getStatus(3);
         SUCCESS = commonTasks.getStatus(4);
         OTP_SENT = commonTasks.getStatus(5);
+        PENDING_APPROVAL = commonTasks.getStatus(6);
+        REJECTED = commonTasks.getStatus(7);
+
     }
 }
