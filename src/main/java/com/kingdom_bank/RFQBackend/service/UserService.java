@@ -9,6 +9,7 @@ import com.kingdom_bank.RFQBackend.entity.Status;
 import com.kingdom_bank.RFQBackend.entity.User;
 import com.kingdom_bank.RFQBackend.entity.UsersTemp;
 import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
+import com.kingdom_bank.RFQBackend.enums.EntityActions;
 import com.kingdom_bank.RFQBackend.repository.RoleRepo;
 import com.kingdom_bank.RFQBackend.repository.UserRepo;
 import com.kingdom_bank.RFQBackend.repository.UserTempRepo;
@@ -91,17 +92,18 @@ public class UserService {
             }
             Role userRole = role.get();
 
-                User newUser = User.builder()
+                UsersTemp newUser = UsersTemp.builder()
                         .username(request.getUserName())
                         .phone(request.getPhoneNumber())
                         .email(request.getEmail())
                         .createdBy(user.getUsername())
                         .dateAdded(new Date())
                         .role(userRole)
+                        .action(EntityActions.CREATE.getValue())
                         .status(constantUtil.PENDING_APPROVAL)
                         .build();
 
-                userRepo.saveAndFlush(newUser);
+                userTempRepo.saveAndFlush(newUser);
                 response.setResponseCode(ApiResponseCode.SUCCESS);
                 response.setResponseMessage("User successfully created.Awaiting Approval");
         }
@@ -212,18 +214,57 @@ public class UserService {
 
     }
 
+    public ReportResponse getUsersPendingApprovals(ReportRequest request, HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        List<UsersTemp> usersList = new ArrayList<>();
+        int page = request.getPage();
+        int size = request.getSize();
+        PageRequest pageable = null;
+
+        try{
+            User loggedInUser = getauthenticatedAPIUser();
+
+            if (request.getStatuses() != null  && !request.getStatuses().isEmpty()) {
+                usersList = userTempRepo.findByStatus_StatusIdInOrderByDateAddedDesc(request.getStatuses());
+            } else {
+                usersList = userTempRepo.findAll(Sort.by(Sort.Direction.DESC, "dateAdded"));
+            }
+
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Users successfully fetched");
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(usersList), ArrayList.class));
+            return response;
+
+
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING USERS DATA FETCH:: {}" ,e.getMessage());
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred while fetching the users Data");
+        }
+        return response;
+
+    }
+
+
     public ApiResponse approveOrRejectUser(ApprovalRequest request, User loggedInUser, Integer id){
         ApiResponse response = new ApiResponse();
         log.info("Approving user of id {}...",id);
 
         try {
-            Optional<User> existingUserOptional = userRepo.findById(id);
+            Optional<UsersTemp> existingUserOptional = userTempRepo.findById(id);
             if (!existingUserOptional.isPresent()) {
                 response.setResponseCode(ApiResponseCode.FAIL);
                 response.setResponseMessage("User  with id  "+ id+ " does not exist");
                 return response;
             }
-            User existingUser = existingUserOptional.get();
+            UsersTemp existingUser = existingUserOptional.get();
 
             String userRole = loggedInUser.getRole().getRoleName();
             if(!userRole.equalsIgnoreCase(adminRole)) {
@@ -237,10 +278,66 @@ public class UserService {
             UserRequest userRequest = UserRequest.builder().id(id).build();
             userRequest.setComment(request.getDescription());
             if(request.getAction().equals(APPROVE.getValue())){
-                userRequest.setStatus(constantUtil.ACTIVE.getStatusId());
+                if(existingUser.getAction().equalsIgnoreCase(EntityActions.CREATE.getValue())) {
+                    User newUser = User.builder()
+                            .username(existingUser.getUsername())
+                            .phone(existingUser.getPhone())
+                            .email(existingUser.getEmail())
+                            .createdBy(existingUser.getCreatedBy())
+                            .dateAdded(new Date())
+                            .approvedBy(loggedInUser.getUsername())
+                            .dateApproved(new Date())
+                            .role(existingUser.getRole())
+                            .status(constantUtil.ACTIVE)
+                            .build();
+                    userRepo.save(newUser);
+
+                    String subject = "CO-OP BANK SOKO USER REGISTRATION";
+                    String msgTemplate = environment.getProperty("msgTemplates.adUserRegistration",
+                            "Dear %s, you have been successfully created on the CO-OP BANK SOKO PLATFORM.Kindly use your AD Credentials to Login");
+                    String message = String.format(msgTemplate,newUser.getUsername());
+                    mailService.sendMail(newUser.getEmail(), subject, message);
+
+                    log.info("User {} create action successfully  approved",existingUser.getId());
+                    response.setResponseMessage("Created User successfully Approved.Please login using your AD Credentials to gain Access.");
+                }
+                else if(existingUser.getAction().equalsIgnoreCase(EntityActions.EDIT.getValue())){
+                    User currentUser = existingUser.getUser();
+                    currentUser.setUsername(existingUser.getUsername());
+                    currentUser.setPhone(existingUser.getPhone());
+                    currentUser.setEmail(existingUser.getEmail());
+                    currentUser.setRole(existingUser.getRole());
+                    currentUser.setUpdatedBy(existingUser.getCreatedBy());
+                    currentUser.setDateUpdated(existingUser.getDateApproved());
+                    userRepo.save(currentUser);
+                    log.info("User {} edit update successfully  approved",existingUser.getId());
+                    response.setResponseMessage("User update successfully Approved.");
+                }
+                else if(existingUser.getAction().equalsIgnoreCase(EntityActions.CHANGE_STATUS.getValue())){
+                    User currentUser = existingUser.getUser();
+                    currentUser.setStatus(existingUser.getStatus());
+                    currentUser.setUpdatedBy(existingUser.getCreatedBy());
+                    currentUser.setDateUpdated(existingUser.getDateApproved());
+                    userRepo.save(currentUser);
+                    log.info("User {} change status update successfully  approved",existingUser.getId());
+                    response.setResponseMessage("User update successfully Approved.");
+                }
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                existingUser.setDateApproved(new Date());
+                existingUser.setApprovedBy(loggedInUser.getUsername());
+                existingUser.setStatus(constantUtil.ACTIVE);
+                userTempRepo.save(existingUser);
             }
             else if(request.getAction().equals(REJECT.getValue())){
-                userRequest.setStatus(constantUtil.REJECTED.getStatusId());
+                existingUser.setDateApproved(new Date());
+                existingUser.setApprovedBy(loggedInUser.getUsername());
+                existingUser.setStatus(constantUtil.REJECTED);
+                existingUser.setComment(request.getDescription());
+                userTempRepo.save(existingUser);
+
+                log.info("User {} successfully  rejected",existingUser.getId());
+                response.setResponseMessage("User record successfully Rejected.");
+                response.setResponseCode(ApiResponseCode.SUCCESS);
             }
             else{
                 response.setResponseCode(ApiResponseCode.FAIL);
@@ -248,31 +345,6 @@ public class UserService {
                 return response;
             }
 
-            response =  changeUserStatus(existingUser,loggedInUser,userRequest,true, Optional.empty());
-
-            //if it fails to changestatus or action is to reject we stop the process
-            if(response.getResponseCode().equals(ApiResponseCode.FAIL)  || request.getAction().equals(REJECT.getValue())){
-                return response;
-            }
-
-            try {
-
-                String subject = "CO-OP BANK SOKO USER REGISTRATION";
-                String msgTemplate = environment.getProperty("msgTemplates.adUserRegistration",
-                        "Dear %s, you have been successfully created on the CO-OP BANK SOKO PLATFORM.Kindly use your AD Credentials to Login");
-                String message = String.format(msgTemplate, existingUser.getUsername());
-                mailService.sendMail(existingUser.getEmail(), subject, message);
-
-                response.setResponseCode(ApiResponseCode.SUCCESS);
-                response.setResponseMessage("User successfully Approved.Please login using your AD Credentials to gain Access.");
-
-            }
-            catch (Exception e) {
-                response.setResponseCode(ApiResponseCode.FAIL);
-                response.setResponseMessage("Sorry,Error occurred while approving the User");
-                existingUser.setStatus(constantUtil.FAILED);
-                userRepo.save(existingUser);
-            }
         }
         catch (Exception e){
             log.error("ERROR OCCURRED DURING APPROVAL OF USER: {}" ,e.getMessage());
@@ -281,6 +353,46 @@ public class UserService {
             response.setResponseMessage("Sorry,Error occurred during approval of user");
         }
         return response;
+    }
+
+
+
+    public ReportResponse getRoles(ReportRequest request, HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        List<Role> rolesList = new ArrayList<>();
+        int page = request.getPage();
+        int size = request.getSize();
+        PageRequest pageable = null;
+
+        try{
+            User loggedInUser = getauthenticatedAPIUser();
+
+            if (request.getStatuses() != null  && !request.getStatuses().isEmpty()) {
+                rolesList = roleRepo.findByStatus_StatusIdInOrderByDateAddedDesc(request.getStatuses());
+            } else {
+                rolesList = roleRepo.findAll(Sort.by(Sort.Direction.DESC, "dateAdded"));
+            }
+
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Roles successfully fetched");
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(rolesList), ArrayList.class));
+            return response;
+
+
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING ROLES DATA FETCH:: {}" ,e.getMessage());
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred while fetching the roles Data");
+        }
+        return response;
+
     }
 
     public ApiResponse changeUserStatus(User user,User loggedInUser , UserRequest request,Boolean isApproval,Optional<User> existingUserNames) {

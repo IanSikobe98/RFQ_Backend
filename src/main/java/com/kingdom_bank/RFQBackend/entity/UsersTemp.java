@@ -60,4 +60,10 @@ public class UsersTemp {
 
     @Column(name = "APPROVED_BY", length = 100)
     private String approvedBy;
+
+    @Column(name = "ACTION", length = 100)
+    private String action;
+
+    @Column(name = "COMMENT", length = 100)
+    private String comment;
 }

@@ -49,5 +49,20 @@ public class UserController {
         log.info("RESPONSE: {}", response);
         return  response;
     }
+    @PostMapping("pendingApprovals/read")
+    public ApiResponse readUsersPendingApprovals(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
+        log.info("READ USERS  PENDING APPROVALS REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.getUsersPendingApprovals(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/roles/read")
+    public ApiResponse readRoles(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
+        log.info("READ ROLES  REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.getRoles(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
 
 }
