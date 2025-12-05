@@ -163,10 +163,10 @@ public class UserService {
                 return response;
             }
 
-            Optional<Role> roleOpt = roleRepo.findById(request.getId());
+            Optional<Role> roleOpt = roleRepo.findById(request.getRoleId());
             if (roleOpt.isEmpty()) {
                 response.setResponseCode(ApiResponseCode.FAIL);
-                response.setResponseMessage("Role of selected does not exist");
+                response.setResponseMessage("Role selected does not exist");
                 log.info("Role of Id  "+ request.getRoleId()+ " does not exist");
                 return response;
             }
@@ -504,6 +504,7 @@ public class UserService {
             if (!Objects.isNull(status)) {
                     UsersTemp userTemp = UsersTemp.builder()
                             .entityStatus(status.getStatusId())
+                            .status(constantUtil.PENDING_APPROVAL)
                             .user(user)
                             .action(EntityActions.CHANGE_STATUS.getValue())
                             .dateAdded(user.getDateAdded())
@@ -525,7 +526,7 @@ public class UserService {
             log.error("ERROR OCCURRED DURING Organization  DATA UPDATE:: {}" ,e.getMessage());
             e.printStackTrace();
             response.setResponseCode(ApiResponseCode.FAIL);
-            response.setResponseMessage("Sorry,Error occurred while updating the organization");
+            response.setResponseMessage("Sorry,Error occurred while updating the user");
         }
         return response;
     }
