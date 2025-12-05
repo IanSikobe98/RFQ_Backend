@@ -42,6 +42,14 @@ public class UserController {
         return  response;
     }
 
+    @PostMapping("/edit")
+    public ApiResponse editUser(HttpServletResponse httpServletResponse ,@RequestBody @Valid UserRequest request){
+        log.info("EDIT USER REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.editUser(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
     @PostMapping("/read")
     public ApiResponse readUsers(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
         log.info("READ USERS  REQUEST :: {}", new Gson().toJson(request));

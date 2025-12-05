@@ -123,6 +123,84 @@ public class UserService {
         }
         return response;
     }
+
+    public ApiResponse editUser(UserRequest request, HttpServletResponse httpServletResponse){
+        log.info("Editing user with request {}", request);
+        ApiResponse response = new ApiResponse();
+        try {
+
+            User loggedInUser = getauthenticatedAPIUser();
+            log.info("Check if user exists  for id ..... {}",request.getId());
+            Optional<User> existingUser = userRepo.findById(request.getId());
+            if (!existingUser.isPresent()) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("User  selected does not exist");
+                return response;
+            }
+
+            User user = existingUser.get();
+            List<Status> statuses = Arrays.asList(constantUtil.ACTIVE, constantUtil.PENDING_APPROVAL);
+            Optional<User> existingUserNames = userRepo.findByUsernameAndStatusIn(request.getUserName(), statuses);
+
+            if (existingUserNames.isPresent() && !user.getUsername().equalsIgnoreCase(request.getUserName())) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("User name already exists");
+                return response;
+            }
+
+            //If it is a status change
+            if (!Objects.isNull(request.getStatus())) {
+                response = changeUserStatus(user,loggedInUser,request,existingUserNames);
+                return response;
+            }
+
+
+            request.setPhoneNumber(cleanPhone(request.getPhoneNumber()));
+            response = validateUserKYC(request,statuses,true,user);
+
+            //If validation failed return error
+            if(response.getResponseCode().equals(ApiResponseCode.FAIL)){
+                return response;
+            }
+
+            Optional<Role> roleOpt = roleRepo.findById(request.getId());
+            if (roleOpt.isEmpty()) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Role of selected does not exist");
+                log.info("Role of Id  "+ request.getRoleId()+ " does not exist");
+                return response;
+            }
+
+            Role role = roleOpt.get();
+
+
+            UsersTemp usersTemp = UsersTemp.builder()
+                    .user(user)
+                    .username(request.getUserName())
+                    .phone(request.getPhoneNumber())
+                    .email(request.getEmail())
+                    .role(role)
+                    .createdBy(loggedInUser.getUsername())
+                    .dateAdded(new Date())
+                    .action(EntityActions.EDIT.getValue())
+                    .status(constantUtil.PENDING_APPROVAL)
+                    .build();
+
+            userTempRepo.saveAndFlush(usersTemp);
+            log.info("User Update Request created successfully id {}",usersTemp.getId());
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("User Update Request created successfully");
+        }
+
+        catch (Exception e) {
+        log.error("ERROR OCCURRED DURING UPDATING OF USERS:: {}" ,e.getMessage());
+        e.printStackTrace();
+        httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+        response.setResponseCode(ApiResponseCode.FAIL);
+        response.setResponseMessage("Sorry,Error occurred while updating users");
+    }
+        return response;
+    }
     private ApiResponse validateUserKYC(UserRequest request,List<Status> statuses,boolean isUpdate,User existingUser){
         log.info("Validating User request {}", request);
         ApiResponse response = new ApiResponse();
@@ -303,10 +381,19 @@ public class UserService {
                 }
                 else if(existingUser.getAction().equalsIgnoreCase(EntityActions.EDIT.getValue())){
                     User currentUser = existingUser.getUser();
-                    currentUser.setUsername(existingUser.getUsername());
-                    currentUser.setPhone(existingUser.getPhone());
-                    currentUser.setEmail(existingUser.getEmail());
-                    currentUser.setRole(existingUser.getRole());
+                    if(existingUser.getUsername()!=null && !existingUser.getUsername().isEmpty()){
+                        currentUser.setUsername(existingUser.getUsername());
+                    }
+                    if(existingUser.getPhone()!=null && !existingUser.getPhone().isEmpty()){
+                        currentUser.setPhone(existingUser.getPhone());
+                    }
+                    if(existingUser.getEmail()!=null && !existingUser.getEmail().isEmpty()){
+                        currentUser.setEmail(existingUser.getEmail());
+                    }
+                    if(existingUser.getRole()!=null ){
+                        currentUser.setRole(existingUser.getRole());
+                    }
+
                     currentUser.setUpdatedBy(existingUser.getCreatedBy());
                     currentUser.setDateUpdated(existingUser.getDateApproved());
                     userRepo.save(currentUser);
@@ -395,22 +482,17 @@ public class UserService {
 
     }
 
-    public ApiResponse changeUserStatus(User user,User loggedInUser , UserRequest request,Boolean isApproval,Optional<User> existingUserNames) {
+    public ApiResponse changeUserStatus(User user,User loggedInUser , UserRequest request,Optional<User> existingUserNames) {
         log.info("Changing user status  for  request {}", request);
         ApiResponse response = new ApiResponse();
         try {
-            if(!isApproval && user.getStatus().equals(constantUtil.PENDING_APPROVAL)){
+            if(user.getStatus().equals(constantUtil.PENDING_APPROVAL)){
                 response.setResponseCode(ApiResponseCode.FAIL);
                 response.setResponseMessage("User with name "+ request.getUserName()+ " is awaiting approval");
                 return response;
-            } else if (isApproval && !user.getStatus().equals(constantUtil.PENDING_APPROVAL)) {
-                response.setResponseCode(ApiResponseCode.FAIL);
-                response.setResponseMessage("User with name "+ request.getUserName() + " has already been approved");
-                return response;
             }
 
-
-            if(!isApproval && request.getStatus().equals(constantUtil.ACTIVE.getStatusId()) && existingUserNames.isPresent()){
+            if(request.getStatus().equals(constantUtil.ACTIVE.getStatusId()) && existingUserNames.isPresent()){
                 response.setResponseCode(ApiResponseCode.FAIL);
                 response.setResponseMessage("User with name "+ request.getUserName() + "  is already active in the system");
                 return response;
@@ -420,10 +502,10 @@ public class UserService {
 
             Status status = commonTasks.getStatus(request.getStatus());
             if (!Objects.isNull(status)) {
-                if(!isApproval){
                     UsersTemp userTemp = UsersTemp.builder()
                             .entityStatus(status.getStatusId())
                             .user(user)
+                            .action(EntityActions.CHANGE_STATUS.getValue())
                             .dateAdded(user.getDateAdded())
                             .createdBy(loggedInUser.getUsername())
                             .build();
@@ -433,18 +515,6 @@ public class UserService {
 
                     response.setResponseCode(ApiResponseCode.SUCCESS);
                     response.setResponseMessage("User status Change Request successfully created");
-                }
-                else {
-                    //APPROVAL OF CREATED USER RECORDS
-                    user.setStatus(status);
-                    user.setDateApproved(new Date());
-                    user.setApprovedBy(loggedInUser.getUsername());
-                    userRepo.save(user);
-
-                    response.setResponseCode(ApiResponseCode.SUCCESS);
-                    response.setResponseMessage("User Status successfully Approved");
-                }
-
             }
             else{
                 response.setResponseCode(ApiResponseCode.FAIL);
