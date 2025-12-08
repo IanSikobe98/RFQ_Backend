@@ -1,5 +1,6 @@
 package com.kingdom_bank.RFQBackend.entity;
 
+import com.kingdom_bank.RFQBackend.dto.PermsDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.List;
 
 
 @Entity
@@ -49,4 +51,7 @@ public class Role {
 
     @Column(name = "APPROVED_BY", length = 100)
     private String approvedBy;
+
+    @Transient
+    private List<PermsDto> privilegeList;
 }

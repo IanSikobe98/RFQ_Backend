@@ -1,9 +1,7 @@
 package com.kingdom_bank.RFQBackend.controller;
 
 import com.google.gson.Gson;
-import com.kingdom_bank.RFQBackend.dto.ApiResponse;
-import com.kingdom_bank.RFQBackend.dto.ReportRequest;
-import com.kingdom_bank.RFQBackend.dto.UserRequest;
+import com.kingdom_bank.RFQBackend.dto.*;
 import com.kingdom_bank.RFQBackend.repository.UserRepo;
 import com.kingdom_bank.RFQBackend.service.ApiService;
 import com.kingdom_bank.RFQBackend.service.UserService;
@@ -69,6 +67,38 @@ public class UserController {
     public ApiResponse readRoles(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
         log.info("READ ROLES  REQUEST :: {}", new Gson().toJson(request));
         ApiResponse response = userService.getRoles(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/roles/create")
+    public ApiResponse createRoles(HttpServletResponse httpServletResponse ,@RequestBody @Valid RolesRequest request){
+        log.info("CREATE ROLES  REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.createRoles(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+    @PostMapping("/roles/edit")
+    public ApiResponse editRoles(HttpServletResponse httpServletResponse ,@RequestBody @Valid RolesRequest request){
+        log.info("EDIT ROLES  REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.editRoles(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/permissions/read")
+    public ReportResponse getPermissions(@RequestBody ReportRequest request, HttpServletResponse httpServletResponse) {
+        ReportResponse response = new ReportResponse();
+        log.info("PERMISSIONS READ  REQUEST :: {}",  new Gson().toJson(request));
+        response = userService.getPermissions(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/roles/pendingApprovals/read")
+    public ApiResponse readRolesPendingApprovals(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
+        log.info("READ ROLES  PENDING APPROVALS REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = userService.getRolesPendingApprovals(request,httpServletResponse);
         log.info("RESPONSE: {}", response);
         return  response;
     }

@@ -1,61 +1,51 @@
 package com.kingdom_bank.RFQBackend.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
-
-@Entity
-@Table(name = "users_temp")
 @Data
+@Entity
+@Table(name = "roles_temp")
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UsersTemp {
+public class RolesTemp {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID")
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "USER_ID", referencedColumnName = "USER_ID")
-    private User user;
+    @Column(name = "ROLE_NAME", length = 50)
+    private String roleName;
 
-    @Column(name = "USERNAME", nullable = false, length = 20)
-    private String username;
+    @Column(name = "ROLE_DESCRIPTION", length = 255)
+    private String roleDescription;
 
-    @Column(name = "PHONE", nullable = false, length = 25)
-    private String phone;
-
-    @Column(name = "EMAIL", nullable = false, length = 25)
-    private String email;
-
-    @ManyToOne
-    @JoinColumn(name = "ROLE_ID", referencedColumnName = "ROLE_ID")
-    private Role role;
+    @Column(name = "PERMISSIONS",length = 255)
+    private String permissions;
 
     @Column(name = "ENTITY_STATUS")
     private Integer entityStatus;
 
-    @ManyToOne
-    @JoinColumn(name = "STATUS_ID", referencedColumnName = "STATUS_ID")
-    private Status status;
-
-    @Column(name = "DATE_ADDED")
+    @Column(name = "DATE_ADDED", columnDefinition = "datetime")
     private Date dateAdded;
 
     @Column(name = "CREATED_BY", length = 100)
     private String createdBy;
 
-    @Column(name = "DATE_UPDATED")
+    @Column(name = "DATE_UPDATED", columnDefinition = "datetime")
     private Date dateUpdated;
 
     @Column(name = "UPDATED_BY", length = 100)
     private String updatedBy;
 
-    @Column(name = "DATE_APPROVED")
+    @Column(name = "DATE_APPROVED", columnDefinition = "datetime")
     private Date dateApproved;
 
     @Column(name = "APPROVED_BY", length = 100)
@@ -66,6 +56,15 @@ public class UsersTemp {
 
     @Column(name = "COMMENT", length = 100)
     private String comment;
+
+    @ManyToOne
+    @JoinColumn(name = "STATUS_ID", referencedColumnName = "STATUS_ID")
+    private Status status;
+
+    @ManyToOne
+    @JoinColumn(name = "ROLE_ID", referencedColumnName = "ROLE_ID")
+    private Role role;
+
 
     @Transient
     private String entityStatusName;

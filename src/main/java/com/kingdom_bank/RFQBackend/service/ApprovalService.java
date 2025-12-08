@@ -64,6 +64,12 @@ public class ApprovalService {
                         futures.add(executorService.submit(task));
                     }
                     break;
+                case ROLE:
+                    for (String id : ids) {
+                        Callable<ApiResponse> task = () -> userService.approveOrRejectRole(request,user, Integer.valueOf(id));
+                        futures.add(executorService.submit(task));
+                    }
+                    break;
 
                 default:
                     response.setResponseCode(ApiResponseCode.FAIL);
