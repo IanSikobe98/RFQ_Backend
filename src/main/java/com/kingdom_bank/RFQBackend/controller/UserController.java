@@ -95,6 +95,15 @@ public class UserController {
         return  response;
     }
 
+    @PostMapping("/role/permissions/read")
+    public ReportResponse getPermissionsByRole(@RequestBody ReportRequest request, HttpServletResponse httpServletResponse) {
+        ReportResponse response = new ReportResponse();
+        log.info("PERMISSIONS BY ROLE READ  REQUEST :: {}",  new Gson().toJson(request));
+        response = userService.getPermissionsByRole(request,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
     @PostMapping("/roles/pendingApprovals/read")
     public ApiResponse readRolesPendingApprovals(HttpServletResponse httpServletResponse ,@RequestBody @Valid ReportRequest request){
         log.info("READ ROLES  PENDING APPROVALS REQUEST :: {}", new Gson().toJson(request));

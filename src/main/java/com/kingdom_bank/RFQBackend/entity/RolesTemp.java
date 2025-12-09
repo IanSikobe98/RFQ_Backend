@@ -1,5 +1,6 @@
 package com.kingdom_bank.RFQBackend.entity;
 
+import com.kingdom_bank.RFQBackend.dto.PermsDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @Entity
@@ -68,4 +70,8 @@ public class RolesTemp {
 
     @Transient
     private String entityStatusName;
+
+    @Transient
+    private List<PermsDto> privilegeList;
 }
+

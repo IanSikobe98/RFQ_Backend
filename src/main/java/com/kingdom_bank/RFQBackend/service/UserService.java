@@ -945,6 +945,41 @@ public class UserService {
 
     }
 
+    public ReportResponse getPermissionsByRole(ReportRequest request, HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        List<RolePrivilege> privilegesList = new ArrayList<>();
+        int page = request.getPage();
+        int size = request.getSize();
+        PageRequest pageable = null;
+
+        try{
+            User loggedInUser = getauthenticatedAPIUser();
+
+            privilegesList = rolePrivilegeRepo.findByRole_RoleId(Integer.valueOf(request.getId()));
+
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Privileges successfully fetched");
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(privilegesList), ArrayList.class));
+            return response;
+
+
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING PRIVILEGES DATA FETCH:: {}" ,e.getMessage());
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred while fetching the privileges Data");
+        }
+        return response;
+
+    }
+
+
     public ReportResponse getRolesPendingApprovals(ReportRequest request, HttpServletResponse httpServletResponse){
         ReportResponse response = new ReportResponse();
         List<RolesTemp> rolesList = new ArrayList<>();
@@ -962,6 +997,22 @@ public class UserService {
             }
 
             rolesList.stream().forEach(role ->{
+                List<PermsDto> permsDtoList = new ArrayList<>();
+                String permissionsStr = role.getPermissions();
+                List<String> permissions = Arrays.asList(permissionsStr.split(","));
+                if(!permissions.isEmpty()){
+                    permissions.stream().forEach(permission ->{
+                       Privilege privilege = privilegeRepo.findByPrivilegeIdAndStatus(Integer.valueOf(permission),constantUtil.ACTIVE);
+                       if(privilege != null){
+                           PermsDto permsDto = PermsDto.builder()
+                                   .id(privilege.getPrivilegeId())
+                                   .permission(privilege.getPrivilegeName())
+                                   .build();
+                           permsDtoList.add(permsDto);
+                       }
+                    });
+                    role.setPrivilegeList(permsDtoList);
+                }
                 if(role.getAction().equalsIgnoreCase(EntityActions.CHANGE_STATUS.getValue())){
                     Status status = commonTasks.getStatus(role.getEntityStatus());
                     if(!Objects.isNull(status)){
