@@ -19,19 +19,19 @@ import java.util.UUID;
 
 
 @Service
-public class GetCifClient {
-    private final Logger log = LoggerFactory.getLogger(GetCifClient.class);
+public class GetCifClientService {
+    private final Logger log = LoggerFactory.getLogger(GetCifClientService.class);
 
     @Value("${soa.getCustomerID.endpoint}")
     private String getCustomerCifEndpoint;
 
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
-    public GetCifClient( SoaRequestTemplateUtil soaRequestTemplateUtil) {
+    public GetCifClientService(SoaRequestTemplateUtil soaRequestTemplateUtil) {
         this.soaRequestTemplateUtil = soaRequestTemplateUtil;
     }
 
-    public AccountDetailsResponse getCustomerCif(String documentType, String documentNumber, String channel) {
+    public AccountDetailsResponse getCustomerCif(String documentType, String documentNumber) {
         AccountDetailsResponse cifResponse = AccountDetailsResponse.builder().responseCode(ApiResponseCode.FAIL.getCode()).build();
         try {
             String request = buildGetCifRequest(documentType, documentNumber);

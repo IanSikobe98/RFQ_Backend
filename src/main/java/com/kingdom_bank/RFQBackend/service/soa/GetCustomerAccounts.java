@@ -30,7 +30,7 @@ public class GetCustomerAccounts {
         this.soaRequestTemplateUtil = soaRequestTemplateUtil;
     }
 
-    public CustomerAccountsResponse getCustomerAccounts(String cif, String channel) {
+    public CustomerAccountsResponse getCustomerAccounts(String cif) {
         CustomerAccountsResponse customerAccountsResponse = CustomerAccountsResponse.builder()
                 .responseCode(ApiResponseCode.FAIL.getCode()).build();
         try {
@@ -59,14 +59,14 @@ public class GetCustomerAccounts {
                 String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
                 String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
                 String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
-                CustomerAccountSummary summary = parseAccountsFromResponse(response.getBody(), cif);
-                customerAccountsResponse.setCustomerAccountSummary(summary);
 
                 customerAccountsResponse.setResponseMessage(message);
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
                         messageCode != null && messageCode.equalsIgnoreCase("0")) {
                     customerAccountsResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
+                    CustomerAccountSummary summary = parseAccountsFromResponse(response.getBody(), cif);
+                    customerAccountsResponse.setCustomerAccountSummary(summary);
                 } else {
                     customerAccountsResponse.setCustomerAccountSummary(null);
                 }
