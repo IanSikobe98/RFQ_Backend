@@ -1,20 +1,32 @@
 package com.kingdom_bank.RFQBackend.service;
 
 
+import com.kingdom_bank.RFQBackend.config.security.SecurityUser;
 import com.kingdom_bank.RFQBackend.dto.*;
+import com.kingdom_bank.RFQBackend.entity.Order;
+import com.kingdom_bank.RFQBackend.entity.User;
 import com.kingdom_bank.RFQBackend.enums.AccountAction;
 import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
 import com.kingdom_bank.RFQBackend.enums.CurrencyAction;
 import com.kingdom_bank.RFQBackend.enums.IdentificationOptions;
+import com.kingdom_bank.RFQBackend.repository.OrderRepository;
 import com.kingdom_bank.RFQBackend.service.soa.*;
+import com.kingdom_bank.RFQBackend.util.ConstantUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateOrderId;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +37,19 @@ public class RFQService {
     private final GetCustomerAccounts getCustomerAccounts;
     private final DetermineStrongerWeakerCurrencyClient determineStrongerWeakerCurrencyClient;
     private final GetExchangeRateClient getExchangeRateClient;
+    private final OrderRepository orderRepository;
+    private final ConstantUtil constantUtil;
+
+    @Value("${rfq.duplication.threshhold}")
+    private String duplicationThreshold;
+
+    /**
+     * Function to get the Authenticated user that was authenticated using JWT
+     * @return ApiUser: The authenticated user
+     */
+    private User getauthenticatedAPIUser(){
+        return  ((SecurityUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUser();
+    }
 
     public ApiResponse getCustomerAccounts(CustomerRequestDTO request,HttpServletResponse httpServletResponse){
         ApiResponse response = new ApiResponse();
@@ -305,5 +330,79 @@ public class RFQService {
 
         return response;
     }
+
+    public ApiResponse createRFQ(CreateRFQRequest request,HttpServletResponse httpServletResponse) {
+        ApiResponse response = new ApiResponse();
+        try{
+
+            User user = getauthenticatedAPIUser();
+            log.info("Starting duplicate check for customer: {}, account: {}, amount: {}",
+                    request.getCustomerNo(), request.getAccountNumber(), request.getAmount());
+
+            LocalDateTime timeThreshold = LocalDateTime.now().minusMinutes(Long.parseLong(duplicationThreshold));
+
+            List<Order> orders = orderRepository.findRecentDuplicateRFQs(request.getCustomerNo(),request.getAccountNumber(),request.getFromCurrency(),
+                    request.getToCurrency(),request.getAmount(),timeThreshold,constantUtil.PENDING_APPROVAL);
+            if(!orders.isEmpty()){
+                Order order = orders.getFirst();
+                log.info("Duplicate order {} found with status {}", order.getOrderId(),constantUtil.PENDING_APPROVAL);
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Duplicate order found");
+                return  response;
+            }
+
+            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
+                    request.getFromCurrency(), request.getToCurrency());
+
+
+            Order order = Order.builder()
+                    .orderId(generateOrderId(request.getCustomerNo()))
+                    .accountNumber(request.getAccountNumber())
+                    .customerName(request.getCustomerName())
+                    .tellerCashAccountName(request.getTellerAccountName())
+
+                    .finacleCifCode(request.getCustomerNo())
+                    .cifAccountCode(request.getCustomerNo())
+
+                    .counterNominalAmount(request.getAmount())
+                    .currencyPair(request.getFromCurrency()+"/"+request.getToCurrency())
+                    .fromCurrency(request.getFromCurrency())
+                    .toCurrency(request.getToCurrency())
+                    .buySell(currencyAction.name().toUpperCase())
+
+//                    .purpose("FX conversion for import settlement")
+                    .requestDate(new Date())
+                    .valueDate(new Date())
+
+//                    .comments("Urgent deal – customer waiting")
+                    .expectedAmount(new BigDecimal("155000000.00"))
+
+//                    .branchId("BR001")
+                    .tellerId(user.getUsername())
+
+                    .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
+                    .validUntil(new Date())
+
+                    .createdBy(user.getUsername())
+                    .status(constantUtil.PENDING_APPROVAL)
+
+                    .build();
+
+            orderRepository.saveAndFlush(order);
+            log.info("Created order with status successfully: {}", order.getOrderId());
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Deal Request successfullly Submitted");
+
+        }
+        catch (Exception e) {
+        e.printStackTrace();
+        httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+        response.setResponseCode(ApiResponseCode.FAIL);
+        response.setResponseMessage("Error occurred while creating RFQ");
+        log.error("Unexpected error when creating RFQ  for request {} {}", request,e.getMessage(), e);
+    }
+        return  response;
+}
 
 }

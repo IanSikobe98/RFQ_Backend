@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +18,8 @@ public class CommonTasks {
     private final StatusRepo statusRepo;
     private static final String SECRET_KEY = "3$RcX@8eWp9Tq3Ls"; // Must match the JS secret key
 
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     public Status getStatus(int id) {
         return statusRepo.findById(id).orElse(null);
@@ -52,6 +56,15 @@ public class CommonTasks {
 
     public static String cleanPhone(String oldPhoneNumber){
         return "254" + oldPhoneNumber.substring(oldPhoneNumber.length() - 9);
+    }
+
+    public static String generateOrderId(String cifAccountId) {
+        if (cifAccountId == null || cifAccountId.isBlank()) {
+            throw new IllegalArgumentException("CIF Account ID cannot be null or empty");
+        }
+
+        String timestamp = LocalDateTime.now().format(FORMATTER);
+        return "ORD-" + cifAccountId + "-" + timestamp;
     }
 
 

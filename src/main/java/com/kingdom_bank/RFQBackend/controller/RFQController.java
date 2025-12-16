@@ -44,5 +44,13 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/createRFQ")
+    public ApiResponse createRFQ(HttpServletResponse httpServletResponse , @RequestBody @Valid CreateRFQRequest request){
+        log.info("GET CREATE RFQ REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = rFQService.createRFQ(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
 
 }
