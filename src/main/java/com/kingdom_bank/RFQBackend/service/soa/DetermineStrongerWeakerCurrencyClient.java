@@ -122,7 +122,6 @@ public class DetermineStrongerWeakerCurrencyClient {
                         "<bsc:FromCurrency>%s</bsc:FromCurrency>" +
                         "<bsc:ToCurrency>%s</bsc:ToCurrency>" +
                         "<bsc:RateCode>MID</bsc:RateCode>" +
-                        "<bsc:Account/>" +
                         "<bsc:TransactionAmount>%s</bsc:TransactionAmount>" +
                         "<bsc:OperationType>n</bsc:OperationType>" +
                         "</bsc:ExchangeRateRequest>" +

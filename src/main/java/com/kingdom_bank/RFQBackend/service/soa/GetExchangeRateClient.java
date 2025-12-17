@@ -349,7 +349,6 @@ public class GetExchangeRateClient {
                         "         <bsc:FromCurrency>%s</bsc:FromCurrency>\n" +
                         "         <bsc:ToCurrency>%s</bsc:ToCurrency>\n" +
                         "         <bsc:RateCode>%s</bsc:RateCode>\n" +
-                        "         <bsc:Account>%s</bsc:Account>\n" +
                         "         <bsc:TransactionAmount>%s</bsc:TransactionAmount>\n" +
                         "         <bsc:OperationType>n</bsc:OperationType>\n" +
                         "      </bsc:ExchangeRateRequest>\n" +
@@ -361,18 +360,17 @@ public class GetExchangeRateClient {
                 exchangeRequest.getFromCurrency(),
                 exchangeRequest.getToCurrency(),
                 rateCode,
-                insertAccount(exchangeRequest),
                 exchangeRequest.getTransactionAmount()
         );
     }
 
-    public String insertAccount(ExchangeRequest exchangeRequest) {
-        if (exchangeRequest.getChannel().equalsIgnoreCase("15")) {
-            return "";
-        } else {
-            return exchangeRequest.getAccount();
-        }
-    }
+//    public String insertAccount(ExchangeRequest exchangeRequest) {
+//        if (exchangeRequest.getChannel().equalsIgnoreCase("15")) {
+//            return "";
+//        } else {
+//            return exchangeRequest.getAccount();
+//        }
+//    }
 
     /**
      * Build SOAP request for all exchange rates list

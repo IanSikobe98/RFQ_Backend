@@ -149,6 +149,7 @@ public class RFQService {
                         account.setAccountType(accountDetailsResponse.getAccountDetails().getProductName());
                         account.setAccountType(accountDetailsResponse.getAccountDetails().getProductContextCode());
                         account.setIsOfficeAccount(true);
+                        account.setBranchCode(accountDetailsResponse.getAccountDetails().getBranchCode());
                         List<CustomerAccount> accounts = new ArrayList<>();
                         accounts.add(account);
                         accountSummary.setAccounts(accounts);
@@ -404,5 +405,7 @@ public class RFQService {
     }
         return  response;
 }
+
+
 
 }

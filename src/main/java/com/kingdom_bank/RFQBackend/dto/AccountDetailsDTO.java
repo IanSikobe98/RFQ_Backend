@@ -15,4 +15,5 @@ public class AccountDetailsDTO {
     private String balance;
     private String productName;
     private String productContextCode;
+    private String branchCode;
 }

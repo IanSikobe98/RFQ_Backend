@@ -52,6 +52,7 @@ public class AccountDetailsService {
                             .productId(extractResponseDetail("ProductID", response.getBody()))
                             .productContextCode(extractResponseDetail("ProductContextCode", response.getBody()))
                             .productName(extractResponseDetail("ProductName", response.getBody()))
+                            .branchCode(extractResponseDetail("BranchCode", response.getBody()))
                             .build();
                     balanceInquiryResponse.setAccountDetails(accountDetailsDTO);
                     balanceInquiryResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());

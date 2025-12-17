@@ -25,6 +25,7 @@ public class CustomerAccount {
     private String accountStatus;
     private String customerCif;
     private String accountCode;
+    private String branchCode;
     private Boolean isOfficeAccount = false;
     private Boolean isStaffAccount = false;
 
