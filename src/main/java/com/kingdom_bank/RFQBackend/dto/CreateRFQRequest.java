@@ -17,8 +17,7 @@ public class CreateRFQRequest {
     private String fromCurrency;
     private String accountNumber;
     private String toCurrency;
-    @JsonFormat(pattern = "dd-MM-yyyy")
-    private LocalDate valueDate;
+    private String valueDate;
     private String negotiatedRate;
     private String tellerAccountName;
 

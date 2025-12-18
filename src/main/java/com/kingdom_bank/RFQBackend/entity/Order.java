@@ -54,9 +54,8 @@ public class Order {
     @Column(name = "REQUEST_DATE")
     private Date requestDate;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "VALUE_DATE")
-    private Date valueDate;
+    private String valueDate;
 
     @Lob
     @Column(name = "COMMENTS")

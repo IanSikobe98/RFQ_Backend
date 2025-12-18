@@ -373,7 +373,7 @@ public class RFQService {
 
 //                    .purpose("FX conversion for import settlement")
                     .requestDate(new Date())
-                    .valueDate(new Date())
+                    .valueDate(request.getValueDate())
 
 //                    .comments("Urgent deal – customer waiting")
                     .expectedAmount(new BigDecimal("155000000.00"))

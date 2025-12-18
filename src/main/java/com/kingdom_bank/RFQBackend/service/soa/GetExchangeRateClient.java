@@ -43,14 +43,24 @@ public class GetExchangeRateClient {
             ExchangeRateResult sellResult = getSingleExchangeRate(exchangeRequest, "TTS");
 
             if (buyResult.isSuccess() && sellResult.isSuccess()) {
+
+                Double buyRate = buyResult.getExchangeRate();
+                Double sellRate = sellResult.getExchangeRate();
+
+                if(buyResult.multiplyDivide.equalsIgnoreCase("D") &&  sellResult.multiplyDivide.equalsIgnoreCase("D")) {
+                    buyRate = 1/buyRate;
+                    sellRate = 1/sellRate;
+                }
+
                 // Build the response data
                 Map<String, Object> responseData = new HashMap<>();
                 responseData.put("fromCurrency", exchangeRequest.getFromCurrency());
                 responseData.put("toCurrency", exchangeRequest.getToCurrency());
-                responseData.put("buyingRate", buyResult.getExchangeRate());
-                responseData.put("sellingRate", sellResult.getExchangeRate());
+                responseData.put("buyingRate", buyRate);
+                responseData.put("sellingRate", sellRate);
                 responseData.put("buyingConvertedAmount", buyResult.getConvertedAmount());
                 responseData.put("sellingConvertedAmount", sellResult.getConvertedAmount());
+
 
                 soaResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
                 soaResponse.setData(responseData);
@@ -293,12 +303,15 @@ public class GetExchangeRateClient {
                 // Extract exchange rate data
                 String exchangeRate = StringUtils.substringBetween(response.getBody(), "<tns25:ExchangeRate>", "</tns25:ExchangeRate>");
                 String convertedAmount = StringUtils.substringBetween(response.getBody(), "<tns25:ConvertedAmount>", "</tns25:ConvertedAmount>");
+                String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<tns25:MultiplyDivide>", "</tns25:MultiplyDivide>");
+
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
                         messageCode != null && messageCode.equalsIgnoreCase("Y")) {
                     result.setSuccess(true);
                     result.setExchangeRate(exchangeRate != null ? Double.parseDouble(exchangeRate) : 0.0);
                     result.setConvertedAmount(convertedAmount != null ? Double.parseDouble(convertedAmount) : 0.0);
+                    result.setMultiplyDivide(multiplyDivide!= null ? multiplyDivide: "");
                 } else {
                     result.setSuccess(false);
                     result.setErrorMessage(message != null ? message : "Unknown error");
@@ -422,6 +435,7 @@ public class GetExchangeRateClient {
         private double exchangeRate;
         private double convertedAmount;
         private String errorMessage;
+        private String multiplyDivide;
 
         // Getters and setters
         public boolean isSuccess() { return success; }
@@ -432,6 +446,14 @@ public class GetExchangeRateClient {
         public void setConvertedAmount(double convertedAmount) { this.convertedAmount = convertedAmount; }
         public String getErrorMessage() { return errorMessage; }
         public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+        public String getMultiplyDivide() {
+            return multiplyDivide;
+        }
+
+        public void setMultiplyDivide(String multiplyDivide) {
+            this.multiplyDivide = multiplyDivide;
+        }
     }
 
     private static class ExchangeRateItem {
