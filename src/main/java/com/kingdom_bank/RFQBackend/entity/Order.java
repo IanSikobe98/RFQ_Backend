@@ -50,7 +50,6 @@ public class Order {
     @Column(name = "PURPOSE")
     private String purpose;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "REQUEST_DATE")
     private Date requestDate;
 

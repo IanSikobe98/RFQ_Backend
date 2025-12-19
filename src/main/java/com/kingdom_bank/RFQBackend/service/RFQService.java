@@ -357,7 +357,7 @@ public class RFQService {
 
 
             Order order = Order.builder()
-                    .orderId(generateOrderId(request.getCustomerNo()))
+                    .orderId(generateOrderId(request.getAccountNumber()))
                     .accountNumber(request.getAccountNumber())
                     .customerName(request.getCustomerName())
                     .tellerCashAccountName(request.getTellerAccountName())
@@ -371,20 +371,21 @@ public class RFQService {
                     .toCurrency(request.getToCurrency())
                     .buySell(currencyAction.name().toUpperCase())
 
-//                    .purpose("FX conversion for import settlement")
+                    .purpose(request.getPurpose())
                     .requestDate(new Date())
                     .valueDate(request.getValueDate())
 
-//                    .comments("Urgent deal – customer waiting")
-                    .expectedAmount(new BigDecimal("155000000.00"))
+                    .comments(request.getComments())
+                    .expectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())))
 
-//                    .branchId("BR001")
+                    .branchId(request.getBranchCode())
                     .tellerId(user.getUsername())
 
                     .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
-                    .validUntil(new Date())
+//                    .validUntil(new Date())
 
                     .createdBy(user.getUsername())
+                    .dateAdded(new Date())
                     .status(constantUtil.PENDING_APPROVAL)
 
                     .build();

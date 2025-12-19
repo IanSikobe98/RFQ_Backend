@@ -20,5 +20,8 @@ public class CreateRFQRequest {
     private String valueDate;
     private String negotiatedRate;
     private String tellerAccountName;
+    private String purpose;
+    private String comments;
+    private String branchCode;
 
 }

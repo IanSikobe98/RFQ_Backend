@@ -58,13 +58,13 @@ public class CommonTasks {
         return "254" + oldPhoneNumber.substring(oldPhoneNumber.length() - 9);
     }
 
-    public static String generateOrderId(String cifAccountId) {
-        if (cifAccountId == null || cifAccountId.isBlank()) {
+    public static String generateOrderId(String accNo) {
+        if (accNo == null || accNo.isBlank()) {
             throw new IllegalArgumentException("CIF Account ID cannot be null or empty");
         }
 
         String timestamp = LocalDateTime.now().format(FORMATTER);
-        return "ORD-" + cifAccountId + "-" + timestamp;
+        return "ORD-" + accNo + "-" + timestamp;
     }
 
 
