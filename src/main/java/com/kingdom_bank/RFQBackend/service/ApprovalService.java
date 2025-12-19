@@ -30,6 +30,7 @@ import static com.kingdom_bank.RFQBackend.enums.ApprovalType.USER;
 public class ApprovalService {
 
     private final UserService userService;
+    private final RFQService rfqService;
     private final Environment environment;
     private ExecutorService executorService;
 
@@ -67,6 +68,12 @@ public class ApprovalService {
                 case ROLE:
                     for (String id : ids) {
                         Callable<ApiResponse> task = () -> userService.approveOrRejectRole(request,user, Integer.valueOf(id));
+                        futures.add(executorService.submit(task));
+                    }
+                    break;
+                case APPROVED_DEALS:
+                    for (String id : ids) {
+                        Callable<ApiResponse> task = () -> rfqService.approveOrRejectDealRequests(request,user, Integer.valueOf(id));
                         futures.add(executorService.submit(task));
                     }
                     break;

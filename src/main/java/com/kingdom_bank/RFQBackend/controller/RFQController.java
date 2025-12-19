@@ -52,5 +52,13 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/getDealRequests")
+    public ApiResponse fetchDealRequests(HttpServletResponse httpServletResponse , @RequestBody @Valid ReportRequest request){
+        log.info("GET fetch Deal Requests REQUEST :: {}", new Gson().toJson(request));
+        ReportResponse response = rFQService.getDealRequests(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
 
 }

@@ -30,4 +30,9 @@ public interface OrderRepository extends JpaRepository<Order,Integer> {
             @Param("timeThreshold") LocalDateTime timeThreshold,
             @Param("status") Status status
     );
+
+
+
+
+    List<Order> findByStatus_StatusIdInOrderByDateAddedDesc(List<Integer> statusId);
 }

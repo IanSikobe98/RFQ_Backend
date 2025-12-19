@@ -1,14 +1,13 @@
 package com.kingdom_bank.RFQBackend.service;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.kingdom_bank.RFQBackend.config.security.SecurityUser;
 import com.kingdom_bank.RFQBackend.dto.*;
-import com.kingdom_bank.RFQBackend.entity.Order;
-import com.kingdom_bank.RFQBackend.entity.User;
-import com.kingdom_bank.RFQBackend.enums.AccountAction;
-import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
-import com.kingdom_bank.RFQBackend.enums.CurrencyAction;
-import com.kingdom_bank.RFQBackend.enums.IdentificationOptions;
+import com.kingdom_bank.RFQBackend.entity.*;
+import com.kingdom_bank.RFQBackend.enums.*;
+import com.kingdom_bank.RFQBackend.repository.ApprovedDealsRepo;
 import com.kingdom_bank.RFQBackend.repository.OrderRepository;
 import com.kingdom_bank.RFQBackend.service.soa.*;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
@@ -16,16 +15,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
+import static com.kingdom_bank.RFQBackend.enums.Action.APPROVE;
+import static com.kingdom_bank.RFQBackend.enums.Action.REJECT;
+import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateDealCode;
 import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateOrderId;
 
 @Service
@@ -39,9 +41,13 @@ public class RFQService {
     private final GetExchangeRateClient getExchangeRateClient;
     private final OrderRepository orderRepository;
     private final ConstantUtil constantUtil;
+    private final ApprovedDealsRepo approvedDealsRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
+
+    @Value("${params.admin_role}")
+    private String adminRole;
 
     /**
      * Function to get the Authenticated user that was authenticated using JWT
@@ -406,6 +412,144 @@ public class RFQService {
     }
         return  response;
 }
+
+
+
+    public ReportResponse getDealRequests(ReportRequest request, HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        List<Order> dealRequestsList = new ArrayList<>();
+        int page = request.getPage();
+        int size = request.getSize();
+        PageRequest pageable = null;
+
+        try{
+            User loggedInUser = getauthenticatedAPIUser();
+
+            if (request.getStatuses() != null  && !request.getStatuses().isEmpty()) {
+                dealRequestsList = orderRepository.findByStatus_StatusIdInOrderByDateAddedDesc(request.getStatuses());
+            } else {
+                dealRequestsList = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "dateAdded"));
+            }
+
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Deal Requests successfully fetched");
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(dealRequestsList), ArrayList.class));
+            return response;
+
+
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING DEAL REQUESTS DATA FETCH:: {}" ,e.getMessage());
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred while fetching the users Data");
+        }
+        return response;
+
+    }
+
+
+    public ApiResponse approveOrRejectDealRequests(ApprovalRequest request, User loggedInUser, Integer id){
+        ApiResponse response = new ApiResponse();
+        log.info("Approving user of id {}...",id);
+
+        try {
+            Optional<Order> existingOrderOptional = orderRepository.findById(id);
+            if (!existingOrderOptional.isPresent()) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("User  with id  "+ id+ " does not exist");
+                return response;
+            }
+            Order existingOrder = existingOrderOptional.get();
+
+            String userRole = loggedInUser.getRole().getRoleName();
+            if(!userRole.equalsIgnoreCase(adminRole)) {
+                if (existingOrder.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
+                    response.setResponseCode(ApiResponseCode.FAIL);
+                    response.setResponseMessage("User cannot approve the order it created");
+                    return response;
+                }
+            }
+
+            UserRequest userRequest = UserRequest.builder().id(id).build();
+            userRequest.setComment(request.getDescription());
+            if(request.getAction().equals(APPROVE.getValue())){
+
+
+
+
+                existingOrder.setDateApproved(new Date());
+                existingOrder.setApprovedBy(loggedInUser.getUsername());
+                existingOrder.setStatus(constantUtil.ACTIVE);
+                existingOrder.setDealerCode(generateDealCode(existingOrder.getFromCurrency(),existingOrder.getToCurrency(),existingOrder.getValueDate(),existingOrder.getId()));
+                existingOrder.setDealerId(loggedInUser.getUsername());
+                orderRepository.save(existingOrder);
+
+                //TODO CONFIRM FIELDS FOR APPROVAL I.E SOLD AMOUNT BOUGHT AMOUNT ETX
+
+
+                //Stage approved deal in new table
+                ApprovedDeals approvedDeal = ApprovedDeals.builder()
+                        .status(constantUtil.ACTIVE)
+                        .order(existingOrder)
+                        .orderCode(existingOrder.getOrderId())
+                        .orderStatus(constantUtil.ACTIVE)
+                        .boughtCurrency(existingOrder.getFromCurrency())
+                        .soldCurrency(existingOrder.getToCurrency())
+//                        .soldAmount(new BigDecimal("1500000.0000"))
+//                        .boughtAmount(new BigDecimal("11500.0000"))
+                        .exchangeRate(existingOrder.getNegotiatedRate())
+//                        .treasuryRate(new BigDecimal("129.900000"))
+                        .dealerCode(existingOrder.getDealerCode())
+                        .finacleCifCode(existingOrder.getFinacleCifCode())
+                        .cifAccountCode(existingOrder.getCifAccountCode())
+                        .executedAmount(existingOrder.getCounterNominalAmount())
+//                        .remainingAmount(new BigDecimal("1000000.0000"))
+                        .valueDate(existingOrder.getValueDate())
+                        .accountNumber(existingOrder.getAccountNumber())
+                        .createdBy(existingOrder.getCreatedBy())
+                        // dateAdded will be set automatically by DB (CURRENT_TIMESTAMP)
+                        .build();
+
+                approvedDealsRepo.save(approvedDeal);
+                log.info("Approved Deals staged successfully , {}",approvedDeal);
+
+
+
+                log.info("Deal Order Request {}  successfully  approved",existingOrder.getId());
+                response.setResponseMessage("Deal Request successfully Approved.");
+
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+            }
+            else if(request.getAction().equals(REJECT.getValue())){
+                existingOrder.setDateApproved(new Date());
+                existingOrder.setApprovedBy(loggedInUser.getUsername());
+                existingOrder.setStatus(constantUtil.REJECTED);
+                orderRepository.save(existingOrder);
+
+                log.info("Order {} successfully  rejected",existingOrder.getId());
+                response.setResponseMessage("Order record successfully Rejected.");
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+            }
+            else{
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("approval action is invalid");
+                return response;
+            }
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING APPROVAL OF ORDER: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during approval of order");
+        }
+        return response;
+    }
 
 
 

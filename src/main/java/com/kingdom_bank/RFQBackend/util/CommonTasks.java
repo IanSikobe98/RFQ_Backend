@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -17,6 +19,8 @@ import java.time.format.DateTimeFormatter;
 public class CommonTasks {
     private final StatusRepo statusRepo;
     private static final String SECRET_KEY = "3$RcX@8eWp9Tq3Ls"; // Must match the JS secret key
+    private static final String Forex ="FX";
+    private static final String kingdomBank ="KB";
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -65,6 +69,26 @@ public class CommonTasks {
 
         String timestamp = LocalDateTime.now().format(FORMATTER);
         return "ORD-" + accNo + "-" + timestamp;
+    }
+
+
+    public static String generateDealCode(String fromCurrency, String toCurrency, String valueDate, Long id) {
+        // Define formatter for the input string
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        // Parse the string to LocalDate
+        LocalDate date = LocalDate.parse(valueDate, inputFormatter);
+
+        // Define formatter for the output string
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+        // Format the LocalDate to desired output
+        String formattedDate = date.format(outputFormatter);
+
+        String padded = String.format("%04d", id);
+
+        return Forex+"-"+kingdomBank+"-"+fromCurrency+toCurrency+"-"+formattedDate+"-"+padded;
+
     }
 
 
