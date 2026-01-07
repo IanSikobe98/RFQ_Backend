@@ -31,9 +31,6 @@ public class Order {
     @Column(name = "TELLER_CASH_ACCOUNT_NAME", length = 255)
     private String tellerCashAccountName;
 
-    @Column(name = "FINACLE_CIF_CODE", length = 50)
-    private String finacleCifCode;
-
     @Column(name = "CIF_ACCOUNT_CODE", length = 50)
     private String cifAccountCode;
 
@@ -71,6 +68,9 @@ public class Order {
 
     @Column(name = "NEGOTIATED_RATE", precision = 18, scale = 6)
     private BigDecimal negotiatedRate;
+
+    @Column(name = "TREASURY_RATE", precision = 18, scale = 6)
+    private BigDecimal treasuryRate;
 
     @Temporal(TemporalType.DATE)
     @Column(name = "VALID_UNTIL")

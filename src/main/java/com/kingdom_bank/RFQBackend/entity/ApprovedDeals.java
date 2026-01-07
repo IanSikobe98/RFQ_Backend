@@ -64,17 +64,12 @@ public class ApprovedDeals {
     @Column(name = "DEALER_CODE", length = 50)
     private String dealerCode;
 
-    @Column(name = "FINACLE_CIF_CODE", length = 50)
-    private String finacleCifCode;
 
     @Column(name = "CIF_ACCOUNT_CODE", length = 50)
     private String cifAccountCode;
 
     @Column(name = "EXECUTED_AMOUNT", precision = 20, scale = 4)
     private BigDecimal executedAmount;
-
-    @Column(name = "REMAINING_AMOUNT", precision = 20, scale = 4)
-    private BigDecimal remainingAmount;
 
     @Column(name = "VALUE_DATE")
     private String valueDate;

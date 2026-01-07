@@ -368,7 +368,6 @@ public class RFQService {
                     .customerName(request.getCustomerName())
                     .tellerCashAccountName(request.getTellerAccountName())
 
-                    .finacleCifCode(request.getCustomerNo())
                     .cifAccountCode(request.getCustomerNo())
 
                     .counterNominalAmount(request.getAmount())
@@ -506,7 +505,7 @@ public class RFQService {
                         .exchangeRate(existingOrder.getNegotiatedRate())
 //                        .treasuryRate(new BigDecimal("129.900000"))
                         .dealerCode(existingOrder.getDealerCode())
-                        .finacleCifCode(existingOrder.getFinacleCifCode())
+
                         .cifAccountCode(existingOrder.getCifAccountCode())
                         .executedAmount(existingOrder.getCounterNominalAmount())
 //                        .remainingAmount(new BigDecimal("1000000.0000"))
