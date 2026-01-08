@@ -375,6 +375,7 @@ public class RFQService {
                     .fromCurrency(request.getFromCurrency())
                     .toCurrency(request.getToCurrency())
                     .buySell(currencyAction.name().toUpperCase())
+                    .treasuryRate(new BigDecimal(request.getTreasuryRate()))
 
                     .purpose(request.getPurpose())
                     .requestDate(new Date())
@@ -500,20 +501,24 @@ public class RFQService {
                         .orderStatus(constantUtil.ACTIVE)
                         .boughtCurrency(existingOrder.getFromCurrency())
                         .soldCurrency(existingOrder.getToCurrency())
-//                        .soldAmount(new BigDecimal("1500000.0000"))
-//                        .boughtAmount(new BigDecimal("11500.0000"))
                         .exchangeRate(existingOrder.getNegotiatedRate())
-//                        .treasuryRate(new BigDecimal("129.900000"))
+                        .treasuryRate(existingOrder.getTreasuryRate())
                         .dealerCode(existingOrder.getDealerCode())
 
                         .cifAccountCode(existingOrder.getCifAccountCode())
-                        .executedAmount(existingOrder.getCounterNominalAmount())
-//                        .remainingAmount(new BigDecimal("1000000.0000"))
                         .valueDate(existingOrder.getValueDate())
                         .accountNumber(existingOrder.getAccountNumber())
                         .createdBy(existingOrder.getCreatedBy())
                         // dateAdded will be set automatically by DB (CURRENT_TIMESTAMP)
                         .build();
+
+
+                if(existingOrder.getBuySell().equalsIgnoreCase("BUY")){
+                    approvedDeal.setBoughtAmount(existingOrder.getCounterNominalAmount());
+                }
+                else if(existingOrder.getBuySell().equalsIgnoreCase("SELL")){
+                    approvedDeal.setSoldAmount(existingOrder.getCounterNominalAmount());
+                }
 
                 approvedDealsRepo.save(approvedDeal);
                 log.info("Approved Deals staged successfully , {}",approvedDeal);

@@ -23,5 +23,6 @@ public class CreateRFQRequest {
     private String purpose;
     private String comments;
     private String branchCode;
+    private String treasuryRate;
 
 }
