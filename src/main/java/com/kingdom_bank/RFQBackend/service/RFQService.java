@@ -555,6 +555,65 @@ public class RFQService {
         return response;
     }
 
+    public ApiResponse fetchAccounts(String accountNumber){
+        ApiResponse response = new ApiResponse();
+        try {
+            log.info("Fetching Details for accNo:  {}",accountNumber);
+            AccountDetailsResponse accountDetailsResponse = accountDetailsService.getAccountDetails(accountNumber);
+            if(accountDetailsResponse.getResponseCode().equals(ApiResponseCode.SUCCESS.getCode())){
+                log.info("Details fetched successfully for accNo:  {}",accountNumber);
+                response.setResponseMessage(accountDetailsResponse.getResponseMessage());
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setEntity(accountDetailsResponse.getAccountDetails());
+            }
+            else{
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage(accountDetailsResponse.getResponseMessage());
+                log.error("Account details fetch error {}",accountDetailsResponse.getResponseMessage());
+            }
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING APPROVAL OF ACCOUNTS: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during approval of accounts");
+        }
+        return response;
+    }
+
+    public ApiResponse getAllExchangeRates() {
+        ApiResponse response = new ApiResponse();
+        try {
+            SOAResponse soaResponse = getExchangeRateClient.getAllExchangeRates();
+
+            if (ApiResponseCode.SUCCESS.getCode().equals(soaResponse.getResponseCode())) {
+                log.info("All exchange rates fetched successfully. Retrieved {} currency pairs",
+                        ((List<?>) soaResponse.getData()).size());
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage(soaResponse.getMessage());
+                response.setEntity(soaResponse.getData());
+
+            } else {
+                log.error("Failed to get all exchange rates. Error: {}", soaResponse.getMessage());
+
+                String message = soaResponse.getMessage() != null ?
+                        soaResponse.getMessage() :
+                        "Error getting all exchange rates, please try again";
+
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage(message);
+            }
+
+        } catch (Exception e) {
+            log.error("Unexpected error getting all exchange rates: {}", e.getMessage(), e);
+            String message = "Unexpected error occurred while fetching all exchange rates. Please try again.";
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage(message);
+        }
+
+        return response;
+    }
+
 
 
 }

@@ -396,16 +396,21 @@ public class GetExchangeRateClient {
         String formattedDate = dateFormat.format(now);
 
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-                        "xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" " +
-                        "xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" " +
-                        "xmlns:bsc=\"urn://co-opbank.co.ke/BS/Common/BSCurrencyExchangeRate.2.0\">\n" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" xmlns:bsc=\"urn://co-opbank.co.ke/BS/Common/BSCurrencyExchangeRate.2.0\">\n" +
                         "   <soapenv:Header>\n" +
                         "      <mes:RequestHeader>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <com:CorrelationID>%s</com:CorrelationID>\n" +
+                        "         <!--Optional:-->\n" +
+                        "         <mes:FaultTO/>\n" +
                         "         <mes:MessageID>%s</mes:MessageID>\n" +
+                        "         <!--Optional:-->\n" +
+                        "         <mes:ReplyTO/>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <mes:Credentials>\n" +
+                        "            <!--Optional:-->\n" +
                         "            <mes:SystemCode>000</mes:SystemCode>\n" +
                         "            <mes:BankID>01</mes:BankID>\n" +
                         "         </mes:Credentials>\n" +
@@ -413,11 +418,15 @@ public class GetExchangeRateClient {
                         "   </soapenv:Header>\n" +
                         "   <soapenv:Body>\n" +
                         "      <bsc:ExchangeRateRequest>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <bsc:FromCurrency></bsc:FromCurrency>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <bsc:ToCurrency></bsc:ToCurrency>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <bsc:RateCode>%s</bsc:RateCode>\n" +
-                        "         <bsc:Account></bsc:Account>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <bsc:TransactionAmount></bsc:TransactionAmount>\n" +
+                        "         <!--Optional:-->\n" +
                         "         <bsc:OperationType>LIST</bsc:OperationType>\n" +
                         "      </bsc:ExchangeRateRequest>\n" +
                         "   </soapenv:Body>\n" +

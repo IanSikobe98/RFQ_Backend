@@ -7,10 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/rfq")
@@ -56,6 +53,22 @@ public class RFQController {
     public ApiResponse fetchDealRequests(HttpServletResponse httpServletResponse , @RequestBody @Valid ReportRequest request){
         log.info("GET fetch Deal Requests REQUEST :: {}", new Gson().toJson(request));
         ReportResponse response = rFQService.getDealRequests(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/fetchAccountDetails/{accountNumber}")
+    public ApiResponse fetchAccountDetails(HttpServletResponse httpServletResponse , @PathVariable("accountNumber") String accountNumber){
+        log.info("GET fetch Account Details Requests REQUEST :: {}", accountNumber);
+        ApiResponse response = rFQService.fetchAccounts(accountNumber);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/getAllExchangeRates")
+    public ApiResponse getAllExchangeRates(HttpServletResponse httpServletResponse){
+        log.info("GET All Exchange Rates REQUEST ");
+        ApiResponse response = rFQService.getAllExchangeRates();
         log.info("RESPONSE: {}", response);
         return  response;
     }
