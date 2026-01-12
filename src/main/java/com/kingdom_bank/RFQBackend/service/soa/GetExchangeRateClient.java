@@ -47,10 +47,10 @@ public class GetExchangeRateClient {
                 Double buyRate = buyResult.getExchangeRate();
                 Double sellRate = sellResult.getExchangeRate();
 
-                if(buyResult.multiplyDivide.equalsIgnoreCase("D") &&  sellResult.multiplyDivide.equalsIgnoreCase("D")) {
-                    buyRate = 1/buyRate;
-                    sellRate = 1/sellRate;
-                }
+//                if(buyResult.multiplyDivide.equalsIgnoreCase("D") &&  sellResult.multiplyDivide.equalsIgnoreCase("D")) {
+//                    buyRate = 1/buyRate;
+//                    sellRate = 1/sellRate;
+//                }
 
                 // Build the response data
                 Map<String, Object> responseData = new HashMap<>();

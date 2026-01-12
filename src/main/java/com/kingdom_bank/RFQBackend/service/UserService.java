@@ -999,19 +999,21 @@ public class UserService {
             rolesList.stream().forEach(role ->{
                 List<PermsDto> permsDtoList = new ArrayList<>();
                 String permissionsStr = role.getPermissions();
-                List<String> permissions = Arrays.asList(permissionsStr.split(","));
-                if(!permissions.isEmpty()){
-                    permissions.stream().forEach(permission ->{
-                       Privilege privilege = privilegeRepo.findByPrivilegeIdAndStatus(Integer.valueOf(permission),constantUtil.ACTIVE);
-                       if(privilege != null){
-                           PermsDto permsDto = PermsDto.builder()
-                                   .id(privilege.getPrivilegeId())
-                                   .permission(privilege.getPrivilegeName())
-                                   .build();
-                           permsDtoList.add(permsDto);
-                       }
-                    });
-                    role.setPrivilegeList(permsDtoList);
+                if(permissionsStr!=null) {
+                    List<String> permissions = Arrays.asList(permissionsStr.split(","));
+                    if (!permissions.isEmpty()) {
+                        permissions.stream().forEach(permission -> {
+                            Privilege privilege = privilegeRepo.findByPrivilegeIdAndStatus(Integer.valueOf(permission), constantUtil.ACTIVE);
+                            if (privilege != null) {
+                                PermsDto permsDto = PermsDto.builder()
+                                        .id(privilege.getPrivilegeId())
+                                        .permission(privilege.getPrivilegeName())
+                                        .build();
+                                permsDtoList.add(permsDto);
+                            }
+                        });
+                        role.setPrivilegeList(permsDtoList);
+                    }
                 }
                 if(role.getAction().equalsIgnoreCase(EntityActions.CHANGE_STATUS.getValue())){
                     Status status = commonTasks.getStatus(role.getEntityStatus());
