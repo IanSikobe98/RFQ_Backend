@@ -356,14 +356,14 @@ public class UserService {
             }
             UsersTemp existingUser = existingUserOptional.get();
 
-            String userRole = loggedInUser.getRole().getRoleName();
-            if(!userRole.equalsIgnoreCase(adminRole)) {
-                if (existingUser.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
-                    response.setResponseCode(ApiResponseCode.FAIL);
-                    response.setResponseMessage("User cannot approve the user it created");
-                    return response;
-                }
-            }
+//            String userRole = loggedInUser.getRole().getRoleName();
+//            if(!userRole.equalsIgnoreCase(adminRole)) {
+//                if (existingUser.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
+//                    response.setResponseCode(ApiResponseCode.FAIL);
+//                    response.setResponseMessage("User cannot approve the user it created");
+//                    return response;
+//                }
+//            }
 
             UserRequest userRequest = UserRequest.builder().id(id).build();
             userRequest.setComment(request.getDescription());
@@ -543,7 +543,7 @@ public class UserService {
                             .status(constantUtil.PENDING_APPROVAL)
                             .user(user)
                             .action(EntityActions.CHANGE_STATUS.getValue())
-                            .dateAdded(user.getDateAdded())
+                            .dateAdded(new Date())
                             .createdBy(loggedInUser.getUsername())
                             .build();
 
@@ -731,7 +731,7 @@ public class UserService {
                         .status(constantUtil.PENDING_APPROVAL)
                         .role(role)
                         .action(EntityActions.CHANGE_STATUS.getValue())
-                        .dateAdded(role.getDateAdded())
+                        .dateAdded(new Date())
                         .createdBy(loggedInUser.getUsername())
                         .build();
 
@@ -767,14 +767,14 @@ public class UserService {
             }
             RolesTemp existingRole = existingRoleOptional.get();
 
-            String userRole = loggedInUser.getRole().getRoleName();
-            if(!userRole.equalsIgnoreCase(adminRole)) {
-                if (existingRole.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
-                    response.setResponseCode(ApiResponseCode.FAIL);
-                    response.setResponseMessage("User cannot approve the role it created");
-                    return response;
-                }
-            }
+//            String userRole = loggedInUser.getRole().getRoleName();
+//            if(!userRole.equalsIgnoreCase(adminRole)) {
+//                if (existingRole.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
+//                    response.setResponseCode(ApiResponseCode.FAIL);
+//                    response.setResponseMessage("User cannot approve the role it created");
+//                    return response;
+//                }
+//            }
 
             UserRequest userRequest = UserRequest.builder().id(id).build();
             userRequest.setComment(request.getDescription());

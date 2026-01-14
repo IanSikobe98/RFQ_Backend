@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.ldap.server.EmbeddedLdapServerContainer;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -395,6 +396,13 @@ public class RFQService {
                     .status(constantUtil.PENDING_APPROVAL)
 
                     .build();
+
+            if(currencyAction.equals(CurrencyAction.Sell)){
+                order.setExpectedAmount(request.getAmount().divide(new BigDecimal(request.getNegotiatedRate())));
+            }
+            else if(currencyAction.equals(CurrencyAction.Buy)){
+                order.setExpectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())));
+            }
 
             orderRepository.saveAndFlush(order);
             log.info("Created order with status successfully: {}", order.getOrderId());
