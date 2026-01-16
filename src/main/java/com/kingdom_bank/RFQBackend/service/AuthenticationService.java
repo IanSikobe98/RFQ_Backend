@@ -48,6 +48,7 @@ public class AuthenticationService {
     @Value("${soa.sms.retries}")
     private String smsRetries;
 
+
     public AuthResponse authenticate(AuthRequest authRequest, HttpServletResponse httpServletResponse){
         AuthResponse response = new AuthResponse();
         UserLoginLog userLoginLog = new UserLoginLog();
@@ -55,6 +56,7 @@ public class AuthenticationService {
         try{
             String username = authRequest.getUsername();
             String password = commonTasks.AESdecrypt(authRequest.getPassword());
+            int otpExpiryTime = Integer.parseInt(environment.getProperty("rfq.app.OtpExpiryTime", "5"));
 
             //Check if user exist
             User user = userService.getUserCredsByUsername(username);
@@ -141,7 +143,7 @@ public class AuthenticationService {
             //TODO --> Confirm if otp fails if it should return failure  in the process
             response.setResponseCode(ApiResponseCode.SUCCESS);
             response.setResponseMessage("Authentication Successful");
-
+            response.setOtpExpiry(String.valueOf(otpExpiryTime));
             log.info("USERNAME:{} AUTHENTICATED SUCCESSFULLY", user.getUsername());
         }
         catch (UsernameNotFoundException e){
@@ -332,10 +334,12 @@ public class AuthenticationService {
     private Date calculateOtpExpiryDate(){
         Date now = new Date();
 
+        int otpExpiryTime = Integer.parseInt(environment.getProperty("rfq.app.OtpExpiryTime", "5"));
+
         // Use Calendar to add 5 minutes to the current time
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(now);
-        calendar.add(Calendar.MINUTE, 5);
+        calendar.add(Calendar.MINUTE, otpExpiryTime);
 
         // Get the updated time
         return calendar.getTime();

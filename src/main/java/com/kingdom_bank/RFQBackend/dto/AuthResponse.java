@@ -14,4 +14,5 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
     private ApiResponseCode responseCode;
     private String responseMessage;
+    private String otpExpiry;
 }
