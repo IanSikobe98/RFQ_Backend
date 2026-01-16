@@ -23,6 +23,7 @@ import org.springframework.security.ldap.server.EmbeddedLdapServerContainer;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -359,9 +360,6 @@ public class RFQService {
                 return  response;
             }
 
-            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
-                    request.getFromCurrency(), request.getToCurrency());
-
 
             Order order = Order.builder()
                     .orderId(generateOrderId(request.getAccountNumber()))
@@ -375,7 +373,7 @@ public class RFQService {
                     .currencyPair(request.getFromCurrency()+"/"+request.getToCurrency())
                     .fromCurrency(request.getFromCurrency())
                     .toCurrency(request.getToCurrency())
-                    .buySell(currencyAction.name().toUpperCase())
+                    .buySell(request.getBankDirection().toUpperCase())
                     .treasuryRate(new BigDecimal(request.getTreasuryRate()))
 
                     .purpose(request.getPurpose())
@@ -397,8 +395,14 @@ public class RFQService {
 
                     .build();
 
+
+            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
+            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
+                    request.getFromCurrency(), request.getToCurrency());
+
+
             if(currencyAction.equals(CurrencyAction.Sell)){
-                order.setExpectedAmount(request.getAmount().divide(new BigDecimal(request.getNegotiatedRate())));
+                order.setExpectedAmount(request.getAmount().divide(new BigDecimal(request.getNegotiatedRate()),2,RoundingMode.HALF_UP));
             }
             else if(currencyAction.equals(CurrencyAction.Buy)){
                 order.setExpectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())));
