@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -35,4 +36,12 @@ public interface OrderRepository extends JpaRepository<Order,Integer> {
 
 
     List<Order> findByStatus_StatusIdInOrderByDateAddedDesc(List<Integer> statusId);
+
+    Double countByStatus(Status status);
+
+    List<Order> findByDateApprovedBetweenAndStatus(Date startOfWeek, Date endOfWeek,Status status);
+
+
+
+
 }
