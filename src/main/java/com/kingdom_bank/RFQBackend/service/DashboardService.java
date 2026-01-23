@@ -42,6 +42,14 @@ public class DashboardService {
             Double weekDeals = (double) orderRepository.findByDateApprovedBetweenAndStatus(startDate, endDate, constantUtil.ACTIVE).size();
 
             Double weekRate = weekDeals / noOfActiveDeals * 100;
+
+            if(successRate.isNaN()){
+                successRate = 0.0;
+            }
+            if(weekRate.isNaN()){
+                weekRate = 0.0;
+            }
+
             DashStats dashStats = DashStats.builder()
                     .activeDeals(noOfActiveDeals)
                     .successRate(successRate)
