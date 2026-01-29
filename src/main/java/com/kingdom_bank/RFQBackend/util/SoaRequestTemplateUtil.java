@@ -77,6 +77,7 @@ public class SoaRequestTemplateUtil {
                         .body("Authentication error occured");
             }
         } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.info("Error occurred while calling service {} : {}", service,e.getLocalizedMessage());
             return ResponseEntity.status(e.getStatusCode())
                     .body(e.getResponseBodyAsString());
         } catch (Exception e) {

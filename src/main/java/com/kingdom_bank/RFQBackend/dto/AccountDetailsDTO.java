@@ -6,8 +6,6 @@ import lombok.Data;
 @Data
 @Builder
 public class AccountDetailsDTO {
-    public String  responseCode;
-    public String  responseMessage;
     private String customerCode;
     private String accountName;
     private String productId;

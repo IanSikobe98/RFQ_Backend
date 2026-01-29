@@ -14,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.UUID;
 
@@ -39,24 +42,31 @@ public class AccountDetailsService {
             ResponseEntity<String> response = soaRequestTemplateUtil.sendSoaRequest("GetAccountDetails", "GetAccountDetails", accountDetailsEndpoint, accountInquiryRequest(accountNumber),"1"
             );
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
-                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
-                balanceInquiryResponse.setResponseMessage(message);
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001")
-                        && messageCode != null && messageCode.equalsIgnoreCase("0")) {
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+//                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
+//                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
+                balanceInquiryResponse.setResponseMessage(statusCode);
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO.builder()
-                            .customerCode(extractResponseDetail("CustomerCode", response.getBody()))
+                            .customerCode(extractResponseDetail("CustomerId", response.getBody()))
                             .accountName(extractResponseDetail("AccountName", response.getBody()))
-                            .currencyCode(extractResponseDetail("CurrencyCode", response.getBody()))
-                            .productId(extractResponseDetail("ProductID", response.getBody()))
-                            .productContextCode(extractResponseDetail("ProductContextCode", response.getBody()))
-                            .productName(extractResponseDetail("ProductName", response.getBody()))
-                            .branchCode(extractResponseDetail("BranchCode", response.getBody()))
+                            .currencyCode(extractResponseDetail("Currency", response.getBody()))
+                            .productId(extractResponseDetail("SchemeType", response.getBody()))
+                            .productContextCode(extractResponseDetail("SchemeCode", response.getBody()))
+                            .productName(extractResponseDetail("SchemeCodeDesc", response.getBody()))
+                            .branchCode(extractResponseDetail("BranchId", response.getBody()))
+                            .balance(extractResponseDetail("AvailableBalance", response.getBody()))
                             .build();
                     balanceInquiryResponse.setAccountDetails(accountDetailsDTO);
                     balanceInquiryResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
                 }
+                else {
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    balanceInquiryResponse.setResponseMessage(message);
+                }
+            }
+            else{
+                balanceInquiryResponse.setResponseMessage("Error Occurred while fetching account details");
             }
         } catch (Exception e) {
             log.error("getBalanceInquiry:idNumber {}:: Error", accountNumber, e);
@@ -75,48 +85,30 @@ public class AccountDetailsService {
 
         SimpleDateFormat fd = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
         Date now = new Date();
-        String formattedDate = fd.format(now);
-        String request = String.format("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" xmlns:bsac=\"urn://co-opbank.co.ke/BS/Account/BSAccountDetails.3.0\">\n" +
-                "   <soapenv:Header>\n" +
-                "      <mes:RequestHeader>\n" +
-                "           <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
-                "         <!--Optional:-->\n" +
-                "         <com:CorrelationID>%s</com:CorrelationID>\n" +
-                "         <!--Optional:-->\n" +
-                "         <mes:FaultTO/>\n" +
-                "         <mes:MessageID>%s</mes:MessageID>\n" +
-                "         <!--Optional:-->\n" +
-                "         <mes:ReplyTO/>\n" +
-                "         <!--Optional:-->\n" +
-                "         <mes:Credentials>\n" +
-                "            <!--Optional:-->\n" +
-                "            <mes:SystemCode>0000</mes:SystemCode>\n" +
-                "            <!--Optional:-->\n" +
-                "            <mes:Username/>\n" +
-                "            <!--Optional:-->\n" +
-                "            <mes:Password/>\n" +
-                "            <!--Optional:-->\n" +
-                "            <mes:Realm/>\n" +
-                "            <!--Optional:-->\n" +
-                "            <mes:BankID>01</mes:BankID>\n" +
-                "         </mes:Credentials>\n" +
-                "      </mes:RequestHeader>\n" +
-                "   </soapenv:Header>\n" +
-                "   <soapenv:Body>\n" +
-                "      <bsac:AccountDetailsRequest>\n" +
-                "         <!--Optional:-->\n" +
-                "         <bsac:AccountNumber>%s</bsac:AccountNumber>\n" +
-                "      </bsac:AccountDetailsRequest>\n" +
-                "   </soapenv:Body>\n" +
-
-                "</soapenv:Envelope>", formattedDate, uid, uid, accountNumber);
+//        String formattedDate = fd.format(now);
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+        String request = String.format("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                "    <soapenv:Header>\n" +
+                "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                "            <RequestId>%s</RequestId>\n" +
+                "            <ChannelId>COR</ChannelId>\n" +
+                "            <Timestamp>%s</Timestamp>\n" +
+                "        </RequestHeader>\n" +
+                "    </soapenv:Header>\n" +
+                "    <soapenv:Body>\n" +
+                "        <GetAccountDetails xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                "            <AccountID>%s</AccountID>\n" +
+                "        </GetAccountDetails>\n" +
+                "    </soapenv:Body>\n" +
+                "</soapenv:Envelope>", uid,formattedDate, accountNumber);
 
 
         return request;
     }
 
     private String extractResponseDetail(String key,String response){
-        return  StringUtils.substringBetween(response, String.format("<tns25:%s>",key), String.format("</tns25:%s>",key));
+        return  StringUtils.substringBetween(response, String.format("<ns3:%s>",key), String.format("</ns3:%s>",key));
     }
 
 }
