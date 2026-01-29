@@ -13,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +26,9 @@ public class GetExchangeRateClient {
 
     @Value("${soa.getExchangeRate.endpoint}")
     private String getExchangeRateEndpoint;
+
+    @Value("${soa.getAllExchangeRates.endpoint}")
+    private String getAllExchangeRatesEndpoint;
 
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
@@ -169,7 +175,7 @@ public class GetExchangeRateClient {
             ResponseEntity<String> response = soaRequestTemplateUtil.sendSoaRequest(
                     "GetExchangeRate",
                     "GetExchangeRate",
-                    getExchangeRateEndpoint,
+                    getAllExchangeRatesEndpoint,
                     request,"1"
             );
 
@@ -190,16 +196,13 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
 
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
-                        messageCode != null && messageCode.equalsIgnoreCase("0")) {
-
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     return parseExchangeRateList(response.getBody());
                 } else {
                     log.error("SOA service returned error for {} rates. Status: {}, Message: {}",
-                            rateCode, statusCode, messageCode);
+                            rateCode, statusCode, statusCode);
                     return null;
                 }
             } else {
@@ -221,7 +224,7 @@ public class GetExchangeRateClient {
         try {
             // Pattern to match ExchangeRateListItem elements
             Pattern itemPattern = Pattern.compile(
-                    "<tns25:ExchangeRateListItem>(.*?)</tns25:ExchangeRateListItem>",
+                    "<ns3:RateList>(.*?)</ns3:RateList>",
                     Pattern.DOTALL
             );
 
@@ -230,10 +233,10 @@ public class GetExchangeRateClient {
             while (itemMatcher.find()) {
                 String itemXml = itemMatcher.group(1);
 
-                String fromCurrency = extractValue(itemXml, "FromCurrency");
-                String toCurrency = extractValue(itemXml, "ToCurrency");
+                String fromCurrency = extractValue(itemXml, "FXD_CRNCY_CODE");
+                String toCurrency = extractValue(itemXml, "VAR_CRNCY_CODE");
                 String rateCode = extractValue(itemXml, "RateCode");
-                String exchangeRateStr = extractValue(itemXml, "ExchangeRate");
+                String exchangeRateStr = extractValue(itemXml, "VAR_CRNCY_UNITS");
 
                 if (fromCurrency != null && toCurrency != null && exchangeRateStr != null) {
                     try {
@@ -269,7 +272,7 @@ public class GetExchangeRateClient {
      * Extract value from XML string using tag name
      */
     private String extractValue(String xml, String tagName) {
-        return StringUtils.substringBetween(xml, "<tns25:" + tagName + ">", "</tns25:" + tagName + ">");
+        return StringUtils.substringBetween(xml, "<ns3:" + tagName + ">", "</ns3:" + tagName + ">");
     }
 
     /**
@@ -296,23 +299,23 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
-                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
-
-                // Extract exchange rate data
-                String exchangeRate = StringUtils.substringBetween(response.getBody(), "<tns25:ExchangeRate>", "</tns25:ExchangeRate>");
-                String convertedAmount = StringUtils.substringBetween(response.getBody(), "<tns25:ConvertedAmount>", "</tns25:ConvertedAmount>");
-                String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<tns25:MultiplyDivide>", "</tns25:MultiplyDivide>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
 
 
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
-                        messageCode != null && messageCode.equalsIgnoreCase("Y")) {
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
+                {
+                    // Extract exchange rate data
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns2:ExchangeRate>", "</ns2:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns2:ConvertedAmount>", "</ns2:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns2:MultiplyDivide>", "</ns2:MultiplyDivide>");
+
+
                     result.setSuccess(true);
                     result.setExchangeRate(exchangeRate != null ? Double.parseDouble(exchangeRate) : 0.0);
                     result.setConvertedAmount(convertedAmount != null ? Double.parseDouble(convertedAmount) : 0.0);
                     result.setMultiplyDivide(multiplyDivide!= null ? multiplyDivide: "");
                 } else {
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
                     result.setSuccess(false);
                     result.setErrorMessage(message != null ? message : "Unknown error");
                 }
@@ -334,46 +337,35 @@ public class GetExchangeRateClient {
      */
     private String buildGetExchangeRateRequest(ExchangeRequest exchangeRequest, String rateCode) {
         String uid = UUID.randomUUID().toString();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        Date now = new Date();
-        String formattedDate = dateFormat.format(now);
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 
 
 
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-                        "xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" " +
-                        "xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" " +
-                        "xmlns:bsc=\"urn://co-opbank.co.ke/BS/Common/BSCurrencyExchangeRate.2.0\">\n" +
-                        "   <soapenv:Header>\n" +
-                        "      <mes:RequestHeader>\n" +
-                        "         <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
-                        "         <com:CorrelationID>%s</com:CorrelationID>\n" +
-                        "         <mes:MessageID>%s</mes:MessageID>\n" +
-                        "         <mes:Credentials>\n" +
-                        "            <mes:SystemCode>000</mes:SystemCode>\n" +
-                        "            <mes:BankID>01</mes:BankID>\n" +
-                        "         </mes:Credentials>\n" +
-                        "      </mes:RequestHeader>\n" +
-                        "   </soapenv:Header>\n" +
-                        "   <soapenv:Body>\n" +
-                        "      <bsc:ExchangeRateRequest>\n" +
-                        "         <bsc:FromCurrency>%s</bsc:FromCurrency>\n" +
-                        "         <bsc:ToCurrency>%s</bsc:ToCurrency>\n" +
-                        "         <bsc:RateCode>%s</bsc:RateCode>\n" +
-                        "         <bsc:TransactionAmount>%s</bsc:TransactionAmount>\n" +
-                        "         <bsc:OperationType>n</bsc:OperationType>\n" +
-                        "      </bsc:ExchangeRateRequest>\n" +
-                        "   </soapenv:Body>\n" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                        "    <soapenv:Header>\n" +
+                        "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "            <RequestId>%s</RequestId>\n" +
+                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <Timestamp>%s</Timestamp>\n" +
+                        "        </RequestHeader>\n" +
+                        "    </soapenv:Header>\n" +
+                        "    <soapenv:Body>\n" +
+                        "        <GetExchangeRates xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "            <TransactionAmount>%s</TransactionAmount>\n" +
+                        "            <RateCode>%s</RateCode>\n" +
+                        "            <ToCurrency>%s</ToCurrency>\n" +
+                        "            <FromCurrency>%s</FromCurrency>\n" +
+                        "        </GetExchangeRates>\n" +
+                        "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                formattedDate,
                 uid,
-                UUID.randomUUID().toString(),
-                exchangeRequest.getFromCurrency(),
-                exchangeRequest.getToCurrency(),
+                formattedDate,
+                exchangeRequest.getTransactionAmount(),
                 rateCode,
-                exchangeRequest.getTransactionAmount()
+                exchangeRequest.getToCurrency(),
+                exchangeRequest.getFromCurrency()
         );
     }
 
@@ -390,51 +382,24 @@ public class GetExchangeRateClient {
      */
     private String buildGetAllExchangeRatesRequest(String rateCode) {
         String uid = UUID.randomUUID().toString();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        Date now = new Date();
-        String formattedDate = dateFormat.format(now);
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" xmlns:bsc=\"urn://co-opbank.co.ke/BS/Common/BSCurrencyExchangeRate.2.0\">\n" +
-                        "   <soapenv:Header>\n" +
-                        "      <mes:RequestHeader>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <com:CorrelationID>%s</com:CorrelationID>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <mes:FaultTO/>\n" +
-                        "         <mes:MessageID>%s</mes:MessageID>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <mes:ReplyTO/>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <mes:Credentials>\n" +
-                        "            <!--Optional:-->\n" +
-                        "            <mes:SystemCode>000</mes:SystemCode>\n" +
-                        "            <mes:BankID>01</mes:BankID>\n" +
-                        "         </mes:Credentials>\n" +
-                        "      </mes:RequestHeader>\n" +
-                        "   </soapenv:Header>\n" +
-                        "   <soapenv:Body>\n" +
-                        "      <bsc:ExchangeRateRequest>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <bsc:FromCurrency></bsc:FromCurrency>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <bsc:ToCurrency></bsc:ToCurrency>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <bsc:RateCode>%s</bsc:RateCode>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <bsc:TransactionAmount></bsc:TransactionAmount>\n" +
-                        "         <!--Optional:-->\n" +
-                        "         <bsc:OperationType>LIST</bsc:OperationType>\n" +
-                        "      </bsc:ExchangeRateRequest>\n" +
-                        "   </soapenv:Body>\n" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                        "    <soapenv:Header>\n" +
+                        "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "            <RequestId>%s</RequestId>\n" +
+                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <Timestamp>%s</Timestamp>\n" +
+                        "        </RequestHeader>\n" +
+                        "    </soapenv:Header>\n" +
+                        "    <soapenv:Body>\n" +
+                        "        <GetExchangeRatesList xmlns=\"https://kingdombankltd.co.ke/banking/core\"></GetExchangeRatesList>\n" +
+                        "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                formattedDate,
                 uid,
-                UUID.randomUUID().toString(),
-                rateCode
+                formattedDate
         );
     }
 

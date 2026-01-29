@@ -12,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,21 +51,19 @@ public class DetermineStrongerWeakerCurrencyClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
-                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
 
-                // Extract exchange rate data
-                String exchangeRate = StringUtils.substringBetween(response.getBody(), "<tns25:ExchangeRate>", "</tns25:ExchangeRate>");
-                String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<tns25:FromCurrency>", "</tns25:FromCurrency>");
-                String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<tns25:ToCurrency>", "</tns25:ToCurrency>");
-                String convertedAmount = StringUtils.substringBetween(response.getBody(), "<tns25:ConvertedAmount>", "</tns25:ConvertedAmount>");
-                String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<tns25:MultiplyDivide>", "</tns25:MultiplyDivide>");
 
-                soaResponse.setMessage(message);
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
+                {
+                    // Extract exchange rate data
+                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns2:FromCurrency>", "</ns2:FromCurrency>");
+                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns2:ToCurrency>", "</ns2:ToCurrency>");
+                    // Extract exchange rate data
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns2:ExchangeRate>", "</ns2:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns2:ConvertedAmount>", "</ns2:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns2:MultiplyDivide>", "</ns2:MultiplyDivide>");
 
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
-                        messageCode != null && (messageCode.equalsIgnoreCase("0") || messageCode.equalsIgnoreCase("Y"))) {
 
                     SoaGetStrongerWeakerDto dto = new SoaGetStrongerWeakerDto();
                     dto.setExchangeRate(exchangeRate);
@@ -75,6 +76,8 @@ public class DetermineStrongerWeakerCurrencyClient {
                     soaResponse.setData(dto);
                 } else {
                     soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    soaResponse.setMessage(message);
                 }
             } else {
                 soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
@@ -91,43 +94,27 @@ public class DetermineStrongerWeakerCurrencyClient {
 
     private String buildGetExchangeRateRequest(String fromCurrency, String toCurrency, String transactionAmount) {
         String uid = UUID.randomUUID().toString();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        Date now = new Date();
-        String formattedDate = dateFormat.format(now);
-
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-                        "xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" " +
-                        "xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" " +
-                        "xmlns:bsc=\"urn://co-opbank.co.ke/BS/Common/BSCurrencyExchangeRate.2.0\">" +
-                        "<soapenv:Header>" +
-                        "<mes:RequestHeader>" +
-                        "<com:CreationTimestamp>%s</com:CreationTimestamp>" +
-                        "<com:CorrelationID>%s</com:CorrelationID>" +
-                        "<mes:FaultTO/>" +
-                        "<mes:MessageID>%s</mes:MessageID>" +
-                        "<mes:ReplyTO/>" +
-                        "<mes:Credentials>" +
-                        "<mes:SystemCode>000</mes:SystemCode>" +
-                        "<mes:Username/>" +
-                        "<mes:Password/>" +
-                        "<mes:Realm/>" +
-                        "<mes:BankID>01</mes:BankID>" +
-                        "</mes:Credentials>" +
-                        "</mes:RequestHeader>" +
-                        "</soapenv:Header>" +
-                        "<soapenv:Body>" +
-                        "<bsc:ExchangeRateRequest>" +
-                        "<bsc:FromCurrency>%s</bsc:FromCurrency>" +
-                        "<bsc:ToCurrency>%s</bsc:ToCurrency>" +
-                        "<bsc:RateCode>MID</bsc:RateCode>" +
-                        "<bsc:TransactionAmount>%s</bsc:TransactionAmount>" +
-                        "<bsc:OperationType>n</bsc:OperationType>" +
-                        "</bsc:ExchangeRateRequest>" +
-                        "</soapenv:Body>" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                        "    <soapenv:Header>\n" +
+                        "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "            <RequestId>%s</RequestId>\n" +
+                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <Timestamp>%s</Timestamp>\n" +
+                        "        </RequestHeader>\n" +
+                        "    </soapenv:Header>\n" +
+                        "    <soapenv:Body>\n" +
+                        "        <GetExchangeRates xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "            <TransactionAmount>%s</TransactionAmount>\n" +
+                        "            <RateCode>MID</RateCode>\n" +
+                        "            <ToCurrency>%s</ToCurrency>\n" +
+                        "            <FromCurrency>%s</FromCurrency>\n" +
+                        "        </GetExchangeRates>\n" +
+                        "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                formattedDate, uid, uid, fromCurrency, toCurrency, transactionAmount
+                uid, formattedDate, transactionAmount, toCurrency , fromCurrency
         );
     }
 }

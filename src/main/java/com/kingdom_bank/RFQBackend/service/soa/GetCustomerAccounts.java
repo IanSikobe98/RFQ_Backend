@@ -14,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 
@@ -56,19 +59,17 @@ public class GetCustomerAccounts {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
-                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
 
-                customerAccountsResponse.setResponseMessage(message);
-
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
-                        messageCode != null && messageCode.equalsIgnoreCase("0")) {
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                customerAccountsResponse.setResponseMessage(statusCode);
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     customerAccountsResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
                     CustomerAccountSummary summary = parseAccountsFromResponse(response.getBody(), cif);
                     customerAccountsResponse.setCustomerAccountSummary(summary);
                 } else {
                     customerAccountsResponse.setCustomerAccountSummary(null);
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    customerAccountsResponse.setResponseMessage(message);
                 }
             } else {
                 customerAccountsResponse.setResponseMessage("HTTP Error: " + response.getStatusCode());
@@ -82,40 +83,25 @@ public class GetCustomerAccounts {
 
     private String buildGetCustomerAccountsRequest(String cif) {
         String uid = UUID.randomUUID().toString();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        Date now = new Date();
-        String formattedDate = dateFormat.format(now);
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-                        "xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" " +
-                        "xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" " +
-                        "xmlns:cus=\"urn://co-opbank.co.ke/BS/Customer/CustomerAccount.Get.3.0\">\n" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
                         "   <soapenv:Header>\n" +
-                        "      <mes:RequestHeader>\n" +
-                        "         <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
-                        "         <com:CorrelationID>%s</com:CorrelationID>\n" +
-                        "         <mes:FaultTO></mes:FaultTO>\n" +
-                        "         <mes:MessageID>%s</mes:MessageID>\n" +
-                        "         <mes:ReplyTO></mes:ReplyTO>\n" +
-                        "         <mes:Credentials>\n" +
-                        "            <mes:SystemCode>000</mes:SystemCode>\n" +
-                        "            <mes:Username></mes:Username>\n" +
-                        "            <mes:Password></mes:Password>\n" +
-                        "            <mes:Realm></mes:Realm>\n" +
-                        "            <mes:BankID>01</mes:BankID>\n" +
-                        "         </mes:Credentials>\n" +
-                        "      </mes:RequestHeader>\n" +
+                        "      <ns1:RequestHeader xmlns:ns1=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "         <ns1:RequestId>%s</ns1:RequestId>\n" +
+                        "         <ns1:ChannelId>COR</ns1:ChannelId>\n" +
+                        "         <ns1:Timestamp>%s</ns1:Timestamp>\n" +
+                        "      </ns1:RequestHeader>\n" +
                         "   </soapenv:Header>\n" +
                         "   <soapenv:Body>\n" +
-                        "      <cus:CustomerAccDetailsRq>\n" +
-                        "         <cus:CustomerId>%s</cus:CustomerId>\n" +
-                        "         <cus:SchmCode></cus:SchmCode>\n" +
-                        "      </cus:CustomerAccDetailsRq>\n" +
+                        "      <ns1:GetCustomerAccountsRequest xmlns:ns1=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "         <ns1:CustId>%s</ns1:CustId>\n" +
+                        "      </ns1:GetCustomerAccountsRequest>\n" +
                         "   </soapenv:Body>\n" +
-                        "</soapenv:Envelope>",
-                formattedDate, uid, uid, cif
+                        "</soapenv:Envelope>\n",
+                 uid, formattedDate, cif
         );
     }
 
@@ -131,21 +117,25 @@ public class GetCustomerAccounts {
 
                 CustomerAccount account = new CustomerAccount();
 
+                //TODO ADD DATA MISSING FROM APIS
                 String phoneNumber = StringUtils.substringBetween(record, "<tns28:PhoneNumber>", "</tns28:PhoneNumber>");
-                String accountNumber = StringUtils.substringBetween(record, "<tns28:AccountNumber>", "</tns28:AccountNumber>");
-                String accountName = StringUtils.substringBetween(record, "<tns28:AccountName>", "</tns28:AccountName>");
-                String currency = StringUtils.substringBetween(record, "<tns28:Currency>", "</tns28:Currency>");
                 String accountType = StringUtils.substringBetween(record, "<tns28:AccountType>", "</tns28:AccountType>");
                 String accountCode = StringUtils.substringBetween(record, "<tns28:AccountCode>", "</tns28:AccountCode>");
-                String accountDescription = StringUtils.substringBetween(record, "<tns28:AccountDescription>", "</tns28:AccountDescription>");
                 String accountStatus = StringUtils.substringBetween(record, "<tns28:AccountStatus>", "</tns28:AccountStatus>");
-                String balance = StringUtils.substringBetween(record, "<tns28:Balance>", "</tns28:Balance>");
-                String freezeCode = StringUtils.substringBetween(record, "<tns28:FreezeCode>", "</tns28:FreezeCode>");
-                if (freezeCode == null && record.contains("<tns28:FreezeCode/>")) {
+                String accountOpenDate = StringUtils.substringBetween(record, "<tns28:AccountOpenDate>", "</tns28:AccountOpenDate>");
+
+
+
+                String accountNumber = StringUtils.substringBetween(record, "<ns3:AcctId>", "</ns3:AcctId>");
+                String accountName = StringUtils.substringBetween(record, "<ns3:AcctName>", "</ns3:AcctName>");
+                String currency = StringUtils.substringBetween(record, "<ns3:Crncy>", "</ns3:Crncy>");
+                String accountDescription = StringUtils.substringBetween(record, "<ns3:AcctName>", "</ns3:AcctName>");
+                String balance = StringUtils.substringBetween(record, "<ns3:Bal>", "</ns3:Bal>");
+                String freezeCode = StringUtils.substringBetween(record, "<ns3:FreezeCode>", "</ns3:FreezeCode>");
+                if (freezeCode == null && record.contains("<ns3:FreezeCode/>")) {
                     freezeCode = "";
                 }
-                String accountClosureFlag = StringUtils.substringBetween(record, "<tns28:AccountClosureFlag>", "</tns28:AccountClosureFlag>");
-                String accountOpenDate = StringUtils.substringBetween(record, "<tns28:AccountOpenDate>", "</tns28:AccountOpenDate>");
+                String accountClosureFlag = StringUtils.substringBetween(record, "<ns3:AcctClsFlg>", "</ns3:AcctClsFlg>");
                 String customerCif = cif;
                 if (customerCif == null || customerCif.isEmpty()) {
                     customerCif = cif;
