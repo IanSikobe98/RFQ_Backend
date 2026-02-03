@@ -299,7 +299,7 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
 
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))

@@ -110,7 +110,7 @@ public class GetCustomerAccounts {
 
         try {
             // Split response by account records
-            String[] accountRecords = xmlResponse.split("<tns28:CustAccLLRec>");
+            String[] accountRecords = xmlResponse.split(" <ns3:CustAccLLRec>");
 
             for (int i = 1; i < accountRecords.length; i++) {
                 String record = accountRecords[i];
@@ -169,6 +169,7 @@ public class GetCustomerAccounts {
                         !Arrays.asList("LAA", "TDA", "TUA", "ODA").contains(accountType)) {
                     accounts.add(account);
                 }
+                accounts.add(account);
             }
 
             log.info("Parsed {} accounts for customer", accounts.size());

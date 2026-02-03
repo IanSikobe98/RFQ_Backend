@@ -13,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -50,19 +53,22 @@ public class GetCifClientService {
 //            }
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<head:StatusCode>", "</head:StatusCode>");
-                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
-                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
-                String cif = StringUtils.substringBetween(response.getBody(), "<tns29:CustomerId>", "</tns29:CustomerId>");
-                cifResponse.setResponseMessage(message);
 
-                if (statusCode != null && statusCode.equalsIgnoreCase("S_001") &&
-                        messageCode != null && messageCode.equalsIgnoreCase("0")) {
+
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                cifResponse.setResponseMessage(statusCode);
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     cifResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
+                    String cif = StringUtils.substringBetween(response.getBody(), "<ns3:CifId>", "</ns3:CifId>");
+
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO
                             .builder().customerCode(cif).build();
                     cifResponse.setAccountDetails(accountDetailsDTO);
+                }else {
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
+                    cifResponse.setResponseMessage(message);
                 }
+
             } else {
                 cifResponse.setResponseMessage("HTTP Error: " + response.getStatusCode());
             }
@@ -75,39 +81,25 @@ public class GetCifClientService {
 
     private String buildGetCifRequest(String documentType, String documentNumber) {
         String uid = UUID.randomUUID().toString();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        Date now = new Date();
-        String formattedDate = dateFormat.format(now);
+        String formattedDate = DateTimeFormatter.ISO_INSTANT
+                .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 
         return String.format(
-                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-                        "xmlns:mes=\"urn://co-opbank.co.ke/CommonServices/Data/Message/MessageHeader\" " +
-                        "xmlns:com=\"urn://co-opbank.co.ke/CommonServices/Data/Common\" " +
-                        "xmlns:cus=\"urn://co-opbank.co.ke/BS/Customer/CustomerId.Get.3.0\">\n" +
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
                         "   <soapenv:Header>\n" +
-                        "      <mes:RequestHeader>\n" +
-                        "         <com:CreationTimestamp>%s</com:CreationTimestamp>\n" +
-                        "         <com:CorrelationID>%s</com:CorrelationID>\n" +
-                        "         <mes:FaultTO/>\n" +
-                        "         <mes:MessageID>%s</mes:MessageID>\n" +
-                        "         <mes:ReplyTO/>\n" +
-                        "         <mes:Credentials>\n" +
-                        "            <mes:SystemCode>000</mes:SystemCode>\n" +
-                        "            <mes:Username/>\n" +
-                        "            <mes:Password/>\n" +
-                        "            <mes:Realm/>\n" +
-                        "            <mes:BankID/>\n" +
-                        "         </mes:Credentials>\n" +
-                        "      </mes:RequestHeader>\n" +
+                        "      <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "         <RequestId>%s</RequestId>\n" +
+                        "         <ChannelId>COR</ChannelId>\n" +
+                        "         <Timestamp>%s</Timestamp>\n" +
+                        "      </RequestHeader>\n" +
                         "   </soapenv:Header>\n" +
                         "   <soapenv:Body>\n" +
-                        "      <cus:CustomerIDRq>\n" +
-                        "         <cus:UniqueIdentifierType>%s</cus:UniqueIdentifierType>\n" +
-                        "         <cus:UniqueIdentifierValue>%s</cus:UniqueIdentifierValue>\n" +
-                        "      </cus:CustomerIDRq>\n" +
+                        "      <CustomerIDInquiry xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
+                        "         <docType>%s</docType>\n" +
+                        "         <docId>%s</docId>\n" +
+                        "      </CustomerIDInquiry>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                formattedDate, uid, uid, documentType, documentNumber
+                uid,formattedDate, documentType, documentNumber
         );
     }}
