@@ -49,6 +49,9 @@ public class AccountDetailsService {
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO.builder()
                             .customerCode(extractResponseDetail("CustomerId", response.getBody()))
+                            .mobileNumber(extractResponseDetail("MobileNumber", response.getBody()))
+                            .accountStatus(extractResponseDetail("AccountStatus", response.getBody()))
+                            .accountOpenDate(extractResponseDetail("AccountOpenDate", response.getBody()))
                             .accountName(extractResponseDetail("AccountName", response.getBody()))
                             .currencyCode(extractResponseDetail("Currency", response.getBody()))
                             .productId(extractResponseDetail("SchemeType", response.getBody()))

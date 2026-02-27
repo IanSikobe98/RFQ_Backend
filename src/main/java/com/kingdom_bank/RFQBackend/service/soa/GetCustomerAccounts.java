@@ -1,6 +1,7 @@
 package com.kingdom_bank.RFQBackend.service.soa;
 
 
+import com.kingdom_bank.RFQBackend.dto.AccountDetailsResponse;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccount;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccountSummary;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccountsResponse;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -28,9 +30,11 @@ public class GetCustomerAccounts {
     private String getCustomerAccountsEndpoint;
 
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
+    private final AccountDetailsService accountDetailsService;
 
-    public GetCustomerAccounts(SoaRequestTemplateUtil soaRequestTemplateUtil) {
+    public GetCustomerAccounts(SoaRequestTemplateUtil soaRequestTemplateUtil, AccountDetailsService accountDetailsService) {
         this.soaRequestTemplateUtil = soaRequestTemplateUtil;
+        this.accountDetailsService = accountDetailsService;
     }
 
     public CustomerAccountsResponse getCustomerAccounts(String cif) {
@@ -117,15 +121,7 @@ public class GetCustomerAccounts {
 
                 CustomerAccount account = new CustomerAccount();
 
-                //TODO ADD DATA MISSING FROM APIS
-                String phoneNumber = StringUtils.substringBetween(record, "<tns28:PhoneNumber>", "</tns28:PhoneNumber>");
-                String accountType = StringUtils.substringBetween(record, "<tns28:AccountType>", "</tns28:AccountType>");
-                String accountCode = StringUtils.substringBetween(record, "<tns28:AccountCode>", "</tns28:AccountCode>");
-                String accountStatus = StringUtils.substringBetween(record, "<tns28:AccountStatus>", "</tns28:AccountStatus>");
-                String accountOpenDate = StringUtils.substringBetween(record, "<tns28:AccountOpenDate>", "</tns28:AccountOpenDate>");
-
-
-
+                String schemeCode = StringUtils.substringBetween(record, "<ns3:SchmCode>", "</ns3:SchmCode>");
                 String accountNumber = StringUtils.substringBetween(record, "<ns3:AcctId>", "</ns3:AcctId>");
                 String accountName = StringUtils.substringBetween(record, "<ns3:AcctName>", "</ns3:AcctName>");
                 String currency = StringUtils.substringBetween(record, "<ns3:Crncy>", "</ns3:Crncy>");
@@ -145,31 +141,27 @@ public class GetCustomerAccounts {
 
 
                 // Set all fields
-                account.setPhoneNumber(phoneNumber);
                 account.setAccountNumber(accountNumber);
                 account.setAccountName(accountName);
                 account.setCurrency(currency);
-                account.setAccountType(accountType);
                 account.setAccountDescription(accountDescription);
-                account.setAccountStatus(accountStatus);
                 account.setBalance(balance);
                 account.setAccountClosureFlag(accountClosureFlag);
-                account.setAccountOpenDate(accountOpenDate);
                 account.setCustomerCif(customerCif);
                 account.setFreezeCode(freezeCode);
-                account.setAccountCode(accountCode);
+                account.setSchemeCode(schemeCode);
 
                 if (account.getAccountCode() != null && !account.getAccountCode().isEmpty() && account.getAccountCode().equalsIgnoreCase("STCUR")) {
                     account.setIsStaffAccount(true);
                 }
 
-                if ("A".equalsIgnoreCase(accountStatus) &&
-                        "N".equalsIgnoreCase(accountClosureFlag) &&
-                        (freezeCode == null || freezeCode.isEmpty()) &&
-                        !Arrays.asList("LAA", "TDA", "TUA", "ODA").contains(accountType)) {
+//              //First step of filtering out accounts
+                if ( "N".equalsIgnoreCase(accountClosureFlag) &&
+                        (freezeCode == null || freezeCode.trim().isEmpty()) &&
+                        !Arrays.asList("LNLIQ", "SPCOL", "MORTE", "ABFLN","PSADL","INVDS").contains(schemeCode)) {
                     accounts.add(account);
                 }
-                accounts.add(account);
+//                accounts.add(account);
             }
 
             log.info("Parsed {} accounts for customer", accounts.size());
@@ -188,9 +180,33 @@ public class GetCustomerAccounts {
             return new CustomerAccountSummary("", "", "", " ", " ", accounts);
         }
 
+        List<CustomerAccount> filteredAccounts = new ArrayList<>();
+
+        accounts.forEach(account -> {
+            AccountDetailsResponse accountDetailsResponse = accountDetailsService.getAccountDetails(account.getAccountNumber());
+            if(accountDetailsResponse != null && accountDetailsResponse.getResponseCode().equals(ApiResponseCode.SUCCESS.getCode())) {
+                account.setAccountOpenDate(accountDetailsResponse.getAccountDetails().getAccountOpenDate());
+                account.setAccountStatus(accountDetailsResponse.getAccountDetails().getAccountStatus());
+                account.setAccountType(accountDetailsResponse.getAccountDetails().getProductId());
+                account.setPhoneNumber(accountDetailsResponse.getAccountDetails().getMobileNumber());
+
+                if ("A".equalsIgnoreCase(account.getAccountStatus()) &&
+                        !Arrays.asList("LAA", "TDA", "TUA", "ODA").contains(account.getAccountType())) {
+                    filteredAccounts.add(account);
+                }
+            }
+        });
+
+        //update accounts
+        accounts = filteredAccounts;
+
+        if (accounts.isEmpty()) {
+            return new CustomerAccountSummary("", "", "", " ", " ", accounts);
+        }
+
         // Get full name from any account (first one)
-        String fullName = accounts.get(0).getAccountName();
-        String customerCif = accounts.get(0).getCustomerCif();
+        String fullName = accounts.getFirst().getAccountName();
+        String customerCif = accounts.getFirst().getCustomerCif();
 
         // Find earliest account opening date for joining year
         String joiningYear = accounts.stream()
@@ -215,9 +231,12 @@ public class GetCustomerAccounts {
 
     private int compareDates(String date1, String date2) {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-            Date d1 = sdf.parse(date1);
-            Date d2 = sdf.parse(date2);
+//            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+            DateTimeFormatter formatter =
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
+            LocalDateTime d1 = LocalDateTime.parse(date1, formatter);
+            LocalDateTime d2 = LocalDateTime.parse(date2, formatter);
+
             return d1.compareTo(d2);
         } catch (Exception e) {
             log.warn("Error comparing dates: {} and {}", date1, date2);
@@ -227,11 +246,14 @@ public class GetCustomerAccounts {
 
     private String extractYear(String dateString) {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-            Date date = sdf.parse(dateString);
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(date);
-            return String.valueOf(cal.get(Calendar.YEAR));
+            // Define the formatter matching your input string
+            DateTimeFormatter formatter =
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
+            // Parse the string into a LocalDateTime
+            LocalDateTime ldt = LocalDateTime.parse(dateString, formatter);
+
+            // Extract the year
+            return String.valueOf(ldt.getYear());
         } catch (Exception e) {
             log.warn("Error extracting year from date: {}", dateString);
             return "";

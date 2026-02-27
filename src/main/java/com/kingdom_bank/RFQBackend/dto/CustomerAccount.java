@@ -28,6 +28,7 @@ public class CustomerAccount {
     private String branchCode;
     private Boolean isOfficeAccount = false;
     private Boolean isStaffAccount = false;
+    private String schemeCode;
 
     @Override
     public String toString() {

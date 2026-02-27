@@ -14,4 +14,8 @@ public class AccountDetailsDTO {
     private String productName;
     private String productContextCode;
     private String branchCode;
+    private String mobileNumber;
+    private String accountOpenDate;
+    private String accountStatus;
+
 }
