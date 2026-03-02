@@ -158,7 +158,9 @@ public class GetCustomerAccounts {
 //              //First step of filtering out accounts
                 if ( "N".equalsIgnoreCase(accountClosureFlag) &&
                         (freezeCode == null || freezeCode.trim().isEmpty()) &&
-                        !Arrays.asList("LNLIQ", "SPCOL", "MORTE", "ABFLN","PSADL","INVDS").contains(schemeCode)) {
+                        !Arrays.asList("ABFLN","AGRLN","GRLNG","INVDS","IPFLC","IPFLN","LOPNR","LOPXR","LPORD","MORTA",
+                                "MORTC","MORTE","MORTP","MSMER","PCSLN","PSADL","PSLAC","PSLNC","SALAD","STFLN","TDMAT",
+                                "COLAT","TUDEP","LNLI0","RSPSA","SAST1","SPCO1","LONOD","LOPEX","LOPIN").contains(schemeCode)) {
                     accounts.add(account);
                 }
 //                accounts.add(account);
