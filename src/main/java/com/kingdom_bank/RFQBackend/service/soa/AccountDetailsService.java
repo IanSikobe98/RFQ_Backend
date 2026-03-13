@@ -42,7 +42,7 @@ public class AccountDetailsService {
             ResponseEntity<String> response = soaRequestTemplateUtil.sendSoaRequest("GetAccountDetails", "GetAccountDetails", accountDetailsEndpoint, accountInquiryRequest(accountNumber),"1"
             );
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
 //                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
 //                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
                 balanceInquiryResponse.setResponseMessage(statusCode);
@@ -111,7 +111,7 @@ public class AccountDetailsService {
     }
 
     private String extractResponseDetail(String key,String response){
-        return  StringUtils.substringBetween(response, String.format("<ns3:%s>",key), String.format("</ns3:%s>",key));
+        return  StringUtils.substringBetween(response, String.format("<ns2:%s>",key), String.format("</ns2:%s>",key));
     }
 
 }

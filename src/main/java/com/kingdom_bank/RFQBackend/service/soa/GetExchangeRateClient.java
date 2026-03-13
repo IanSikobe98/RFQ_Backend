@@ -104,19 +104,19 @@ public class GetExchangeRateClient {
             // Get all buy rates (TTB)
             Map<String, ExchangeRateItem> buyRates = getAllRatesByType("TTB");
 
-            // Get all sell rates (TTS)
-            Map<String, ExchangeRateItem> sellRates = getAllRatesByType("TTS");
 
-            if (buyRates != null && sellRates != null) {
+            if (buyRates != null ) {
                 List<Map<String, Object>> allPairs = new ArrayList<>();
+                HashSet<String> sellRates = new HashSet<>();
 
                 // Process all buy rates first
                 for (String buyKey : buyRates.keySet()) {
+                    if(sellRates.add(buyKey)) {
                     ExchangeRateItem buyRate = buyRates.get(buyKey);
 
                     // Look for matching sell rate (check both direct and reversed key)
-                    String reversedKey = buyRate.getToCurrency() + "_" + buyRate.getFromCurrency();
-                    ExchangeRateItem sellRate = sellRates.get(reversedKey);
+                    String reversedKey = buyRate.getFromCurrency() + "_" + buyRate.getToCurrency();
+                    ExchangeRateItem sellRate = buyRates.get(reversedKey);
 
                     Map<String, Object> pairData = new HashMap<>();
                     pairData.put("fromCurrency", buyRate.getFromCurrency());
@@ -129,23 +129,11 @@ public class GetExchangeRateClient {
 
                     // Remove the matched sell rate to avoid duplicates
                     if (sellRate != null) {
-                        sellRates.remove(reversedKey);
+                        sellRates.add(reversedKey);
+                    }
                     }
                 }
 
-                // Process remaining sell rates that didn't have matching buy rates
-                for (String sellKey : sellRates.keySet()) {
-                    ExchangeRateItem sellRate = sellRates.get(sellKey);
-
-                    Map<String, Object> pairData = new HashMap<>();
-                    pairData.put("fromCurrency", sellRate.getFromCurrency());
-                    pairData.put("toCurrency", sellRate.getToCurrency());
-                    pairData.put("combination", sellRate.getFromCurrency() + "/" + sellRate.getToCurrency());
-                    pairData.put("buyingRate", null);
-                    pairData.put("sellingRate", sellRate.getExchangeRate());
-
-                    allPairs.add(pairData);
-                }
 
                 soaResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
                 soaResponse.setData(allPairs);
@@ -249,7 +237,13 @@ public class GetExchangeRateClient {
                         item.setExchangeRate(exchangeRate);
 
                         // Use combination of from and to currency as key
-                        String key = fromCurrency + "_" + toCurrency;
+                        String key = "";
+                        if(rateCode.equalsIgnoreCase("TTB")) {
+                            key = fromCurrency + "_" + toCurrency;
+                        }
+                        else{
+                            key = toCurrency + "_" + fromCurrency ;
+                        }
                         rateMap.put(key, item);
 
                     } catch (NumberFormatException e) {
