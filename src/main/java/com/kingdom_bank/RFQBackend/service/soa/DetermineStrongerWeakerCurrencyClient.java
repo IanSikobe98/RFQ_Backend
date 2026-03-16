@@ -52,9 +52,9 @@ public class DetermineStrongerWeakerCurrencyClient {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorCode>", "</ns2:ErrorCode>");
 
-
-                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
+                if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS") && errorCode== null )
                 {
                     // Extract exchange rate data
                     String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns2:FromCurrency>", "</ns2:FromCurrency>");

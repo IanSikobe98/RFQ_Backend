@@ -74,12 +74,13 @@ public class GetExchangeRateClient {
             } else {
                 soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
                 String errorMessage = "Failed to retrieve exchange rates";
-                if (!buyResult.isSuccess()) {
-                    errorMessage += " - Buy rate error: " + buyResult.getErrorMessage();
-                }
-                if (!sellResult.isSuccess()) {
-                    errorMessage += " - Sell rate error: " + sellResult.getErrorMessage();
-                }
+                log.info(errorMessage + buyResult.getErrorMessage());
+//                if (!buyResult.isSuccess()) {
+//                    errorMessage += " - Buy rate error: " + buyResult.getErrorMessage();
+//                }
+//                if (!sellResult.isSuccess()) {
+//                    errorMessage += " - Sell rate error: " + sellResult.getErrorMessage();
+//                }
                 soaResponse.setMessage(errorMessage);
             }
 
@@ -87,7 +88,8 @@ public class GetExchangeRateClient {
             log.error("GetExchangeRate:: Error for fetching exchange rates for {} to {}",
                     exchangeRequest.getFromCurrency(), exchangeRequest.getToCurrency(), e);
             soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
-            soaResponse.setMessage("Error occurred while fetching exchange rates: " + e.getMessage());
+            log.info("Error occurred while fetching exchange rates: " + e.getMessage());
+            soaResponse.setMessage("Error occurred while fetching exchange rates: ");
         }
         return soaResponse;
     }

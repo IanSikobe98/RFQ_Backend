@@ -118,7 +118,7 @@ public class AuthenticationService {
                     log.info("Attempt {} to Send otp  to phone {} ", retryCounter + 1, user.getPhone());
 //                    sendSms = smsNotificationService.sendSMS(userCreds.getUser().getPhone(), message);
                     sendSms = true;
-                    String subject = "CO-OP BANK SOKO OTP";
+                    String subject = "FOREX QUOTE OTP";
                     mailService.sendMail(user.getEmail(), subject, message);
 
                     if (sendSms) {

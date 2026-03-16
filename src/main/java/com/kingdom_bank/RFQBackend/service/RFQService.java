@@ -278,7 +278,7 @@ public class RFQService {
 
             return result;
         } else {
-            throw new RuntimeException("Failed to get exchange rate from SOA service. Response code: " +
+            throw new RuntimeException("Failed to get exchange rate from service. Response code: " +
                     soaResponse.getResponseCode());
         }
     }

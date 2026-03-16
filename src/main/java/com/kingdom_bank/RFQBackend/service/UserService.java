@@ -382,9 +382,9 @@ public class UserService {
                             .build();
                     userRepo.save(newUser);
 
-                    String subject = "CO-OP BANK SOKO USER REGISTRATION";
+                    String subject = "FOREX QUOTE USER REGISTRATION";
                     String msgTemplate = environment.getProperty("msgTemplates.adUserRegistration",
-                            "Dear %s, you have been successfully created on the CO-OP BANK SOKO PLATFORM.Kindly use your AD Credentials to Login");
+                            "Dear %s, you have been successfully created on the FOREX QUOTE PLATFORM.Kindly use your AD Credentials to Login");
                     String message = String.format(msgTemplate,newUser.getUsername());
                     mailService.sendMail(newUser.getEmail(), subject, message);
 
