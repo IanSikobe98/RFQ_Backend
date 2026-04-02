@@ -64,7 +64,7 @@ public class GetCustomerAccounts {
 
             if (response.getStatusCode().is2xxSuccessful()) {
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
                 customerAccountsResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     customerAccountsResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
@@ -114,24 +114,24 @@ public class GetCustomerAccounts {
 
         try {
             // Split response by account records
-            String[] accountRecords = xmlResponse.split(" <ns3:CustAccLLRec>");
+            String[] accountRecords = xmlResponse.split(" <ns4:CustAccLLRec>");
 
             for (int i = 1; i < accountRecords.length; i++) {
                 String record = accountRecords[i];
 
                 CustomerAccount account = new CustomerAccount();
 
-                String schemeCode = StringUtils.substringBetween(record, "<ns3:SchmCode>", "</ns3:SchmCode>");
-                String accountNumber = StringUtils.substringBetween(record, "<ns3:AcctId>", "</ns3:AcctId>");
-                String accountName = StringUtils.substringBetween(record, "<ns3:AcctName>", "</ns3:AcctName>");
-                String currency = StringUtils.substringBetween(record, "<ns3:Crncy>", "</ns3:Crncy>");
-                String accountDescription = StringUtils.substringBetween(record, "<ns3:AcctName>", "</ns3:AcctName>");
-                String balance = StringUtils.substringBetween(record, "<ns3:Bal>", "</ns3:Bal>");
-                String freezeCode = StringUtils.substringBetween(record, "<ns3:FreezeCode>", "</ns3:FreezeCode>");
-                if (freezeCode == null && record.contains("<ns3:FreezeCode/>")) {
+                String schemeCode = StringUtils.substringBetween(record, "<ns4:SchmCode>", "</ns4:SchmCode>");
+                String accountNumber = StringUtils.substringBetween(record, "<ns4:AcctId>", "</ns4:AcctId>");
+                String accountName = StringUtils.substringBetween(record, "<ns4:AcctName>", "</ns4:AcctName>");
+                String currency = StringUtils.substringBetween(record, "<ns4:Crncy>", "</ns4:Crncy>");
+                String accountDescription = StringUtils.substringBetween(record, "<ns4:AcctName>", "</ns4:AcctName>");
+                String balance = StringUtils.substringBetween(record, "<ns4:Bal>", "</ns4:Bal>");
+                String freezeCode = StringUtils.substringBetween(record, "<ns4:FreezeCode>", "</ns4:FreezeCode>");
+                if (freezeCode == null && record.contains("<ns4:FreezeCode/>")) {
                     freezeCode = "";
                 }
-                String accountClosureFlag = StringUtils.substringBetween(record, "<ns3:AcctClsFlg>", "</ns3:AcctClsFlg>");
+                String accountClosureFlag = StringUtils.substringBetween(record, "<ns4:AcctClsFlg>", "</ns4:AcctClsFlg>");
                 String customerCif = cif;
                 if (customerCif == null || customerCif.isEmpty()) {
                     customerCif = cif;

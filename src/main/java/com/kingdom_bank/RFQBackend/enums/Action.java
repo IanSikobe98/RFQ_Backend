@@ -5,6 +5,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum Action {
     APPROVE("APPROVE"),
-    REJECT("REJECT");
+    REJECT("REJECT"),
+    NEGOTIATE("NEGOTIATE");
     private final String value;
 }

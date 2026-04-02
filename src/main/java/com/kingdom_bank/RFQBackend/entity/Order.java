@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "ORDERS")
@@ -110,6 +111,9 @@ public class Order {
 
     @Column(name = "APPROVED_BY", length = 100)
     private String approvedBy;
+
+    @Transient
+    private List<CommentsDto> commentsDtoList;
 
     /* =======================
        FOREIGN KEY

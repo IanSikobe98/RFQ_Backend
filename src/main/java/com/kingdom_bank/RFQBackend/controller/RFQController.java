@@ -49,6 +49,16 @@ public class RFQController {
         return  response;
     }
 
+
+    @PostMapping("/updateRate")
+    public ApiResponse updateRate(HttpServletResponse httpServletResponse , @RequestBody @Valid UpdateRateRequest request){
+        log.info("GET UPDATE RATE REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = rFQService.updateRate(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+
     @PostMapping("/getDealRequests")
     public ApiResponse fetchDealRequests(HttpServletResponse httpServletResponse , @RequestBody @Valid ReportRequest request){
         log.info("GET fetch Deal Requests REQUEST :: {}", new Gson().toJson(request));

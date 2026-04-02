@@ -21,7 +21,10 @@ public class ConstantUtil {
     public Status SUCCESS;
     public Status OTP_SENT;
     public Status PENDING_APPROVAL;
+    public Status PENDING_TELLER_APPROVAL;
+    public Status PENDING_DEALER_APPROVAL;
     public Status REJECTED;
+    public Status PENDING_NEGOTIATION;
 
     @PostConstruct
     public void init() {
@@ -33,6 +36,9 @@ public class ConstantUtil {
         OTP_SENT = commonTasks.getStatus(5);
         PENDING_APPROVAL = commonTasks.getStatus(6);
         REJECTED = commonTasks.getStatus(7);
+        PENDING_TELLER_APPROVAL = commonTasks.getStatus(8);
+        PENDING_DEALER_APPROVAL = commonTasks.getStatus(9);
+        PENDING_NEGOTIATION = commonTasks.getStatus(10);
 
     }
 }

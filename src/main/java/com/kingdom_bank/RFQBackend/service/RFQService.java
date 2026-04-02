@@ -8,6 +8,7 @@ import com.kingdom_bank.RFQBackend.dto.*;
 import com.kingdom_bank.RFQBackend.entity.*;
 import com.kingdom_bank.RFQBackend.enums.*;
 import com.kingdom_bank.RFQBackend.repository.ApprovedDealsRepo;
+import com.kingdom_bank.RFQBackend.repository.CommentsRepo;
 import com.kingdom_bank.RFQBackend.repository.OrderRepository;
 import com.kingdom_bank.RFQBackend.service.soa.*;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
@@ -27,8 +28,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.kingdom_bank.RFQBackend.enums.Action.APPROVE;
-import static com.kingdom_bank.RFQBackend.enums.Action.REJECT;
+import static com.kingdom_bank.RFQBackend.enums.Action.*;
 import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateDealCode;
 import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateOrderId;
 
@@ -44,6 +44,7 @@ public class RFQService {
     private final OrderRepository orderRepository;
     private final ConstantUtil constantUtil;
     private final ApprovedDealsRepo approvedDealsRepo;
+    private final CommentsRepo commentsRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -380,36 +381,40 @@ public class RFQService {
                     .requestDate(new Date())
                     .valueDate(request.getValueDate())
 
-                    .comments(request.getComments())
-                    .expectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())))
+//                    .comments(request.getComments())
+//                    .expectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())))
 
                     .branchId(request.getBranchCode())
                     .tellerId(user.getUsername())
 
-                    .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
+//                    .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
 //                    .validUntil(new Date())
 
                     .createdBy(user.getUsername())
                     .dateAdded(new Date())
-                    .status(constantUtil.PENDING_APPROVAL)
+                    .status(constantUtil.PENDING_DEALER_APPROVAL)
 
                     .build();
 
 
-            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
-            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
-                    request.getFromCurrency(), request.getToCurrency());
-
-
-            if(currencyAction.equals(CurrencyAction.Sell)){
-                order.setExpectedAmount(request.getAmount().divide(new BigDecimal(request.getNegotiatedRate()),2,RoundingMode.HALF_UP));
-            }
-            else if(currencyAction.equals(CurrencyAction.Buy)){
-                order.setExpectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())));
-            }
+//            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
+//            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
+//                    request.getFromCurrency(), request.getToCurrency());
+//
+//
+//            if(currencyAction.equals(CurrencyAction.Sell)){
+//                order.setExpectedAmount(request.getAmount().divide(new BigDecimal(request.getNegotiatedRate()),2,RoundingMode.HALF_UP));
+//            }
+//            else if(currencyAction.equals(CurrencyAction.Buy)){
+//                order.setExpectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())));
+//            }
 
             orderRepository.saveAndFlush(order);
             log.info("Created order with status successfully: {}", order.getOrderId());
+
+
+            saveComments(request.getComments(),order,user);
+
 
             response.setResponseCode(ApiResponseCode.SUCCESS);
             response.setResponseMessage("Deal Request successfullly Submitted");
@@ -424,6 +429,75 @@ public class RFQService {
     }
         return  response;
 }
+
+   private void saveComments(String comment,Order order,User user){
+       Comments comments = Comments.builder()
+               .comment(comment)
+               .createdBy(user)
+               .updatedBy(user)
+               .order(order)
+               .build();
+
+       commentsRepo.saveAndFlush(comments);
+       log.info("Comments Created Successfully");
+    }
+
+
+    public ApiResponse updateRate(UpdateRateRequest request,HttpServletResponse httpServletResponse){
+        ApiResponse response = new ApiResponse();
+        try{
+
+            User user = getauthenticatedAPIUser();
+            log.info("Updating rate for request : {}",request);
+
+            Optional<Order> orderOptional = orderRepository.findById(request.getOrderId());
+            if(orderOptional.isEmpty()){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Order Not Found");
+                return response;
+            }
+
+            Order order = orderOptional.get();
+            order.setNegotiatedRate(new BigDecimal(request.getRate()));
+            order.setUpdatedBy(user.getUsername());
+            order.setStatus(constantUtil.PENDING_TELLER_APPROVAL);
+
+
+            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
+            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
+                    order.getFromCurrency(), order.getToCurrency());
+
+
+            if(currencyAction.equals(CurrencyAction.Sell)){
+                order.setExpectedAmount(order.getCounterNominalAmount().divide(new BigDecimal(request.getRate()),2,RoundingMode.HALF_UP));
+            }
+            else if(currencyAction.equals(CurrencyAction.Buy)){
+                order.setExpectedAmount(order.getCounterNominalAmount().multiply(new BigDecimal(request.getRate())));
+            }
+
+            orderRepository.saveAndFlush(order);
+
+
+            saveComments(request.getComment(),order,user);
+
+            response.setResponseMessage("Proposed rate updated successfully");
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+
+
+            log.info("rates updated successfully for request : {}",request);
+
+
+
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Error occurred while updating rate");
+            log.error("Unexpected error when updating rate  for request {} {}", request,e.getMessage(), e);
+        }
+        return  response;
+    }
 
 
 
@@ -442,6 +516,24 @@ public class RFQService {
             } else {
                 dealRequestsList = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "dateAdded"));
             }
+
+
+            dealRequestsList.forEach(order -> {
+                List<CommentsDto> commentsDtoList = new ArrayList<>();
+                List<Comments> comments = commentsRepo.findByOrder_IdOrderByCreatedByDesc(order.getId());
+                if(!comments.isEmpty()){
+                   comments.forEach(comment -> {
+                      CommentsDto commentsDto = CommentsDto.builder()
+                              .comment(comment.getComment())
+                              .dateCreated(comment.getDateCreated())
+                              .id(comment.getId())
+                              .build();
+                      commentsDtoList.add(commentsDto);
+                   });
+                   order.setCommentsDtoList(commentsDtoList);
+               }
+            });
+
 
 
             response.setResponseCode(ApiResponseCode.SUCCESS);
@@ -480,25 +572,24 @@ public class RFQService {
             Order existingOrder = existingOrderOptional.get();
 
             String userRole = loggedInUser.getRole().getRoleName();
-            if(!userRole.equalsIgnoreCase(adminRole)) {
-                if (existingOrder.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
-                    response.setResponseCode(ApiResponseCode.FAIL);
-                    response.setResponseMessage("User cannot approve the order it created");
-                    return response;
-                }
-            }
+//            if(!userRole.equalsIgnoreCase(adminRole)) {
+//                if (existingOrder.getCreatedBy().equalsIgnoreCase(loggedInUser.getUsername())) {
+//                    response.setResponseCode(ApiResponseCode.FAIL);
+//                    response.setResponseMessage("User cannot approve the order it created");
+//                    return response;
+//                }
+//            }
 
             UserRequest userRequest = UserRequest.builder().id(id).build();
-            userRequest.setComment(request.getDescription());
+//            userRequest.setComment(request.getDescription());
             if(request.getAction().equals(APPROVE.getValue())){
-
-
+                String dealCode = generateDealCode(existingOrder.getFromCurrency(),existingOrder.getToCurrency(),existingOrder.getValueDate(),existingOrder.getId());
 
 
                 existingOrder.setDateApproved(new Date());
                 existingOrder.setApprovedBy(loggedInUser.getUsername());
                 existingOrder.setStatus(constantUtil.ACTIVE);
-                existingOrder.setDealerCode(generateDealCode(existingOrder.getFromCurrency(),existingOrder.getToCurrency(),existingOrder.getValueDate(),existingOrder.getId()));
+                existingOrder.setDealerCode(dealCode);
                 existingOrder.setDealerId(loggedInUser.getUsername());
                 orderRepository.save(existingOrder);
 
@@ -539,7 +630,9 @@ public class RFQService {
 
                 log.info("Deal Order Request {}  successfully  approved",existingOrder.getId());
                 response.setResponseMessage("Deal Request successfully Approved.");
-
+                Map<String ,String> dealInfo = new HashMap<>();
+                dealInfo.put("dealCode",dealCode);
+                response.setEntity(dealInfo);
                 response.setResponseCode(ApiResponseCode.SUCCESS);
             }
             else if(request.getAction().equals(REJECT.getValue())){
@@ -548,8 +641,22 @@ public class RFQService {
                 existingOrder.setStatus(constantUtil.REJECTED);
                 orderRepository.save(existingOrder);
 
+                saveComments(request.getDescription(),existingOrder,loggedInUser);
+
                 log.info("Order {} successfully  rejected",existingOrder.getId());
                 response.setResponseMessage("Order record successfully Rejected.");
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+            }
+            else if(request.getAction().equals(NEGOTIATE.getValue())){
+                existingOrder.setDateUpdated(new Date());
+                existingOrder.setUpdatedBy(loggedInUser.getUsername());
+                existingOrder.setStatus(constantUtil.PENDING_NEGOTIATION);
+                orderRepository.save(existingOrder);
+
+                saveComments(request.getDescription(),existingOrder,loggedInUser);
+
+                log.info("Order request successfully sent back to dealer {}",existingOrder.getId());
+                response.setResponseMessage("Order request successfully sent back to dealer.");
                 response.setResponseCode(ApiResponseCode.SUCCESS);
             }
             else{
