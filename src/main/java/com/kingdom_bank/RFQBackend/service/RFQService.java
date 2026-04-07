@@ -45,6 +45,7 @@ public class RFQService {
     private final ConstantUtil constantUtil;
     private final ApprovedDealsRepo approvedDealsRepo;
     private final CommentsRepo commentsRepo;
+    private final PostDealCodeService postDealCodeService;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -584,56 +585,33 @@ public class RFQService {
 //            userRequest.setComment(request.getDescription());
             if(request.getAction().equals(APPROVE.getValue())){
                 String dealCode = generateDealCode(existingOrder.getFromCurrency(),existingOrder.getToCurrency(),existingOrder.getValueDate(),existingOrder.getId());
-
-
+                existingOrder.setDealerCode(dealCode);
                 existingOrder.setDateApproved(new Date());
                 existingOrder.setApprovedBy(loggedInUser.getUsername());
-                existingOrder.setStatus(constantUtil.ACTIVE);
-                existingOrder.setDealerCode(dealCode);
                 existingOrder.setDealerId(loggedInUser.getUsername());
-                orderRepository.save(existingOrder);
-
-                //TODO CONFIRM FIELDS FOR APPROVAL I.E SOLD AMOUNT BOUGHT AMOUNT ETX
 
 
-                //Stage approved deal in new table
-                ApprovedDeals approvedDeal = ApprovedDeals.builder()
-                        .status(constantUtil.ACTIVE)
-                        .order(existingOrder)
-                        .orderCode(existingOrder.getOrderId())
-                        .orderStatus(constantUtil.ACTIVE)
-                        .boughtCurrency(existingOrder.getFromCurrency())
-                        .soldCurrency(existingOrder.getToCurrency())
-                        .exchangeRate(existingOrder.getNegotiatedRate())
-                        .treasuryRate(existingOrder.getTreasuryRate())
-                        .dealerCode(existingOrder.getDealerCode())
+                PostDealCodeResponse postDealCodeResponse = postDealCodeService.postDealCode(existingOrder);
 
-                        .cifAccountCode(existingOrder.getCifAccountCode())
-                        .valueDate(existingOrder.getValueDate())
-                        .accountNumber(existingOrder.getAccountNumber())
-                        .createdBy(existingOrder.getCreatedBy())
-                        // dateAdded will be set automatically by DB (CURRENT_TIMESTAMP)
-                        .build();
+                if(postDealCodeResponse.getResponseCode().equalsIgnoreCase(ApiResponseCode.SUCCESS.getCode())) {
 
 
-                if(existingOrder.getBuySell().equalsIgnoreCase("BUY")){
-                    approvedDeal.setBoughtAmount(existingOrder.getCounterNominalAmount());
-                }
-                else if(existingOrder.getBuySell().equalsIgnoreCase("SELL")){
-                    approvedDeal.setSoldAmount(existingOrder.getCounterNominalAmount());
+                    updateOrderAndCreateApprovedDeals(existingOrder);
+                    log.info("Deal Order Request {}  successfully  approved", existingOrder.getId());
+                    response.setResponseMessage("Deal Request successfully Approved.");
+                    Map<String, String> dealInfo = new HashMap<>();
+                    dealInfo.put("dealCode", dealCode);
+                    response.setEntity(dealInfo);
+                    response.setResponseCode(ApiResponseCode.SUCCESS);
                 }
 
-                approvedDealsRepo.save(approvedDeal);
-                log.info("Approved Deals staged successfully , {}",approvedDeal);
+                else{
+                    existingOrder.setStatus(constantUtil.FAILED);
+                    orderRepository.save(existingOrder);
+                    response.setResponseCode(ApiResponseCode.FAIL);
+                    response.setResponseMessage("Failed to post deal code to Finacle");
 
-
-
-                log.info("Deal Order Request {}  successfully  approved",existingOrder.getId());
-                response.setResponseMessage("Deal Request successfully Approved.");
-                Map<String ,String> dealInfo = new HashMap<>();
-                dealInfo.put("dealCode",dealCode);
-                response.setEntity(dealInfo);
-                response.setResponseCode(ApiResponseCode.SUCCESS);
+                }
             }
             else if(request.getAction().equals(REJECT.getValue())){
                 existingOrder.setDateApproved(new Date());
@@ -731,6 +709,98 @@ public class RFQService {
         }
 
         return response;
+    }
+
+
+    public ApiResponse retryPostDealCode(DealCodeRetryRequest request,HttpServletResponse httpServletResponse){
+        ApiResponse response = new ApiResponse();
+        try {
+            Optional<Order> order = orderRepository.findById(request.getId());
+            if(order.isEmpty()){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Order selected does not exist");
+                return response;
+            }
+
+            Order existingOrder = order.get();
+            try {
+                existingOrder.setStatus(constantUtil.PROCESSING);
+                orderRepository.save(existingOrder);
+                log.info("Initiating retry Process for Order {}..........", existingOrder.getOrderId());
+                PostDealCodeResponse postDealCodeResponse = postDealCodeService.postDealCode(existingOrder);
+
+                if (postDealCodeResponse.getResponseCode().equalsIgnoreCase(ApiResponseCode.SUCCESS.getCode())) {
+                    updateOrderAndCreateApprovedDeals(existingOrder);
+                    log.info("Deal Order Request {}  successfully  approved", existingOrder.getId());
+                    response.setResponseMessage("Deal Request successfully Approved.");
+                    Map<String, String> dealInfo = new HashMap<>();
+                    dealInfo.put("dealCode", existingOrder.getDealerCode());
+                    response.setEntity(dealInfo);
+                    response.setResponseCode(ApiResponseCode.SUCCESS);
+                } else {
+                    existingOrder.setStatus(constantUtil.FAILED);
+                    orderRepository.save(existingOrder);
+                    log.info("Retry Process Failed for Order {}..........", existingOrder.getOrderId());
+                    response.setResponseCode(ApiResponseCode.FAIL);
+                    response.setResponseMessage("Failed to post deal code to Finacle");
+                }
+            }
+            catch (Exception e){
+                log.error("ERROR OCCURRED DURING RETRY OF POSTING DEAL CODE TO FINACLE: {}" ,e.getMessage());
+                e.printStackTrace();
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Sorry,Error occurred during reposting of deal code to finacle");
+                existingOrder.setStatus(constantUtil.FAILED);
+                orderRepository.save(existingOrder);
+                return response;
+            }
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING RETRY OF POSTING DEAL CODE TO FINACLE: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during reposting of deal code to finacle");
+        }
+        return response;
+
+    }
+
+
+    public void updateOrderAndCreateApprovedDeals(Order existingOrder){
+        existingOrder.setStatus(constantUtil.ACTIVE);
+        orderRepository.save(existingOrder);
+
+        //TODO CONFIRM FIELDS FOR APPROVAL I.E SOLD AMOUNT BOUGHT AMOUNT ETX
+
+
+        //Stage approved deal in new table
+        ApprovedDeals approvedDeal = ApprovedDeals.builder()
+                .status(constantUtil.ACTIVE)
+                .order(existingOrder)
+                .orderCode(existingOrder.getOrderId())
+                .orderStatus(constantUtil.ACTIVE)
+                .boughtCurrency(existingOrder.getFromCurrency())
+                .soldCurrency(existingOrder.getToCurrency())
+                .exchangeRate(existingOrder.getNegotiatedRate())
+                .treasuryRate(existingOrder.getTreasuryRate())
+                .dealerCode(existingOrder.getDealerCode())
+
+                .cifAccountCode(existingOrder.getCifAccountCode())
+                .valueDate(existingOrder.getValueDate())
+                .accountNumber(existingOrder.getAccountNumber())
+                .createdBy(existingOrder.getCreatedBy())
+                // dateAdded will be set automatically by DB (CURRENT_TIMESTAMP)
+                .build();
+
+
+        if (existingOrder.getBuySell().equalsIgnoreCase("BUY")) {
+            approvedDeal.setBoughtAmount(existingOrder.getCounterNominalAmount());
+        } else if (existingOrder.getBuySell().equalsIgnoreCase("SELL")) {
+            approvedDeal.setSoldAmount(existingOrder.getCounterNominalAmount());
+        }
+
+        approvedDealsRepo.save(approvedDeal);
+        log.info("Approved Deals staged successfully , {}", approvedDeal);
     }
 
 

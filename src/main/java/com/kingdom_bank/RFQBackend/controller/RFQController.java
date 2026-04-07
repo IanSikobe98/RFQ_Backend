@@ -83,5 +83,13 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/retryPostDealCode")
+    public ApiResponse retryPostDealCode(HttpServletResponse httpServletResponse , @RequestBody @Valid DealCodeRetryRequest request){
+        log.info("RETRY POST DEAL CODE REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = rFQService.retryPostDealCode(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
 
 }
