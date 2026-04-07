@@ -51,10 +51,12 @@ public class PostDealCodeService {
             if (response.getStatusCode().is2xxSuccessful()) {
 
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
                 postDealCodeResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     postDealCodeResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:Message>", "</ns2:Message>");
+                    postDealCodeResponse.setResponseMessage(message);
                 }else {
                     String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
                     postDealCodeResponse.setResponseMessage(message);
