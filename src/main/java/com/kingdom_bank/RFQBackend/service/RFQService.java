@@ -12,6 +12,7 @@ import com.kingdom_bank.RFQBackend.repository.CommentsRepo;
 import com.kingdom_bank.RFQBackend.repository.OrderRepository;
 import com.kingdom_bank.RFQBackend.repository.UserRepo;
 import com.kingdom_bank.RFQBackend.service.soa.*;
+import com.kingdom_bank.RFQBackend.util.CommonTasks;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
@@ -31,7 +32,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.kingdom_bank.RFQBackend.enums.Action.*;
-import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateDealCode;
 import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateOrderId;
 
 @Service
@@ -51,6 +51,7 @@ public class RFQService {
     private final PostDealCodeService postDealCodeService;
     private final NotificationService notificationService;
     private final UserRepo userRepo;
+    private final CommonTasks commonTasks;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -539,16 +540,16 @@ public class RFQService {
 
             dealRequestsList.forEach(order -> {
                 List<CommentsDto> commentsDtoList = new ArrayList<>();
-                List<Comments> comments = commentsRepo.findByOrder_IdOrderByCreatedByDesc(order.getId());
+                List<Comments> comments = commentsRepo.findByOrder_IdOrderByDateCreatedDesc(order.getId());
                 if(!comments.isEmpty()){
-                   comments.forEach(comment -> {
+                    for(Comments comment :comments) {
                       CommentsDto commentsDto = CommentsDto.builder()
                               .comment(comment.getComment())
                               .dateCreated(comment.getDateCreated())
                               .id(comment.getId())
                               .build();
                       commentsDtoList.add(commentsDto);
-                   });
+                   }
                    order.setCommentsDtoList(commentsDtoList);
                }
             });
@@ -602,7 +603,7 @@ public class RFQService {
             UserRequest userRequest = UserRequest.builder().id(id).build();
 //            userRequest.setComment(request.getDescription());
             if(request.getAction().equals(APPROVE.getValue())){
-                String dealCode = generateDealCode(existingOrder.getFromCurrency(),existingOrder.getToCurrency(),existingOrder.getValueDate(),existingOrder.getId());
+                String dealCode = commonTasks.generateDealCode();
                 existingOrder.setDealerCode(dealCode);
                 existingOrder.setDateApproved(new Date());
                 existingOrder.setApprovedBy(loggedInUser.getUsername());
@@ -617,7 +618,7 @@ public class RFQService {
 
 
                     log.info("Initiating sending of notification......");
-                    String message = "Teller has approved the rate "+existingOrder.getNegotiatedRate()+" for ORDER "+existingOrder.getOrderId();
+                    String message = "Teller has approved the rate "+String.format("%.2f", existingOrder.getNegotiatedRate())+" for ORDER "+existingOrder.getOrderId();
                     List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
                     User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
                     if(dealer!=null){
@@ -778,6 +779,17 @@ public class RFQService {
                     updateOrderAndCreateApprovedDeals(existingOrder);
                     log.info("Deal Order Request {}  successfully  approved", existingOrder.getId());
                     response.setResponseMessage("Deal Request successfully Approved.");
+
+
+                    log.info("Initiating sending of notification......");
+                    String message = "Teller has approved the rate "+String.format("%.2f", existingOrder.getNegotiatedRate())+" for ORDER "+existingOrder.getOrderId();
+                    List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
+                    User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
+                    if(dealer!=null){
+                        notificationService.sendUserNotification(message,existingOrder,dealer,NotificationType.RFQ_APPROVED);
+                        log.info("Notification successfully sent to dealer {} .......",dealer.getUsername());
+                    }
+
                     Map<String, String> dealInfo = new HashMap<>();
                     dealInfo.put("dealCode", existingOrder.getDealerCode());
                     response.setEntity(dealInfo);

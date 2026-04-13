@@ -128,6 +128,7 @@ public class GetCustomerAccounts {
                 String accountDescription = StringUtils.substringBetween(record, "<ns4:AcctName>", "</ns4:AcctName>");
                 String balance = StringUtils.substringBetween(record, "<ns4:Bal>", "</ns4:Bal>");
                 String freezeCode = StringUtils.substringBetween(record, "<ns4:FreezeCode>", "</ns4:FreezeCode>");
+                String relationType = StringUtils.substringBetween(record, "<ns4:RelationType>", "</ns4:RelationType>");
                 if (freezeCode == null && record.contains("<ns4:FreezeCode/>")) {
                     freezeCode = "";
                 }
@@ -157,6 +158,7 @@ public class GetCustomerAccounts {
 
 //              //First step of filtering out accounts
                 if ( "N".equalsIgnoreCase(accountClosureFlag) &&
+                        "M".equalsIgnoreCase(relationType) &&
                         (freezeCode == null || freezeCode.trim().isEmpty()) &&
                         !Arrays.asList("ABFLN","AGRLN","GRLNG","INVDS","IPFLC","IPFLN","LOPNR","LOPXR","LPORD","MORTA",
                                 "MORTC","MORTE","MORTP","MSMER","PCSLN","PSADL","PSLAC","PSLNC","SALAD","STFLN","TDMAT",

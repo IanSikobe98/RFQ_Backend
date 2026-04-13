@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface CommentsRepo extends JpaRepository<Comments, Integer> {
-    List<Comments> findByOrder_IdOrderByCreatedByDesc(Long orderId);
+    List<Comments> findByOrder_IdOrderByDateCreatedDesc(Long orderId);
 }

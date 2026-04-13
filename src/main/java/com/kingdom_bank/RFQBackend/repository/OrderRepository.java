@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order,Integer> {
@@ -41,6 +42,7 @@ public interface OrderRepository extends JpaRepository<Order,Integer> {
 
     List<Order> findByDateApprovedBetweenAndStatus(Date startOfWeek, Date endOfWeek,Status status);
 
+    Optional<Order> findTopByOrderByDealerCodeDesc();
 
 
 

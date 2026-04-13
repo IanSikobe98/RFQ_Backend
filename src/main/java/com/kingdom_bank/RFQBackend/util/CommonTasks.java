@@ -1,11 +1,14 @@
 package com.kingdom_bank.RFQBackend.util;
 
+import com.kingdom_bank.RFQBackend.entity.Order;
 import com.kingdom_bank.RFQBackend.entity.Role;
 import com.kingdom_bank.RFQBackend.entity.Status;
+import com.kingdom_bank.RFQBackend.repository.OrderRepository;
 import com.kingdom_bank.RFQBackend.repository.RoleRepo;
 import com.kingdom_bank.RFQBackend.repository.StatusRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -14,15 +17,22 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CommonTasks {
     private final StatusRepo statusRepo;
+    private final OrderRepository orderRepository;
     private static final String SECRET_KEY = "3$RcX@8eWp9Tq3Ls"; // Must match the JS secret key
     private static final String Forex ="FX";
     private static final String kingdomBank ="KB";
+
+    @Value("${rfq.mostRecentDealCode}")
+    private String mostRecentDealCode;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -78,25 +88,60 @@ public class CommonTasks {
         return "ORD-" + accNo + "-" + timestamp;
     }
 
+//
+//    public static String generateDealCode(String fromCurrency, String toCurrency, String valueDate, Long id) {
+//        // Define formatter for the input string
+//        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//
+//        // Parse the string to LocalDate
+//        LocalDate date = LocalDate.parse(valueDate, inputFormatter);
+//
+//        // Define formatter for the output string
+//        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+//
+//        // Format the LocalDate to desired output
+//        String formattedDate = date.format(outputFormatter);
+//
+//        String padded = String.format("%04d", id);
+//
+//        return Forex+"-"+kingdomBank+"-"+fromCurrency+toCurrency+"-"+formattedDate+"-"+padded;
+//
+//    }
 
-    public static String generateDealCode(String fromCurrency, String toCurrency, String valueDate, Long id) {
-        // Define formatter for the input string
-        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public  String generateDealCode() {
+        Optional<Order> order = orderRepository.findTopByOrderByDealerCodeDesc();
 
-        // Parse the string to LocalDate
-        LocalDate date = LocalDate.parse(valueDate, inputFormatter);
 
-        // Define formatter for the output string
-        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        if (order.isPresent() && order.get().getDealerCode() != null
+                && !order.get().getDealerCode().isEmpty()) {
+            Order existingOrder = order.get();
+            mostRecentDealCode =  existingOrder.getDealerCode();
+        }
 
-        // Format the LocalDate to desired output
-        String formattedDate = date.format(outputFormatter);
+        int[] numbers = Arrays.stream(mostRecentDealCode.split("/"))
+                .mapToInt(Integer::parseInt)
+                .toArray();
 
-        String padded = String.format("%04d", id);
+        int prevNumber = numbers[0];
+        int nextNumber = numbers[1];
 
-        return Forex+"-"+kingdomBank+"-"+fromCurrency+toCurrency+"-"+formattedDate+"-"+padded;
+        if(nextNumber == 99999){
+            prevNumber = prevNumber + 1;
+            nextNumber = 1;
+        }
+        else{
+            nextNumber = nextNumber+1;
+        }
+
+        String prevNumberString = String.format("%04d", prevNumber);
+        String nextNumberString = String.format("%05d", nextNumber);
+
+        return prevNumberString+"/"+nextNumberString;
 
     }
+
+
+
 
 
 }
