@@ -59,4 +59,11 @@ public class User {
 
     @Column(name = "APPROVED_BY", length = 100)
     private String approvedBy;
+
+    @PrePersist
+    public void prePersist() {
+        this.dateAdded = new Date();
+        this.dateUpdated = new Date();
+    }
+
 }

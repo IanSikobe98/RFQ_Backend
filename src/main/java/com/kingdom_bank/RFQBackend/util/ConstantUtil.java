@@ -1,5 +1,6 @@
 package com.kingdom_bank.RFQBackend.util;
 
+import com.kingdom_bank.RFQBackend.entity.Role;
 import com.kingdom_bank.RFQBackend.entity.Status;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,10 @@ public class ConstantUtil {
     public Status REJECTED;
     public Status PENDING_NEGOTIATION;
     public Status PROCESSING;
+    public Status NEW;
+    public Status NOTIFICATION_SENT;
+
+    public Role TREASURY_DEALER;
 
     @PostConstruct
     public void init() {
@@ -41,6 +46,11 @@ public class ConstantUtil {
         PENDING_DEALER_APPROVAL = commonTasks.getStatus(9);
         PENDING_NEGOTIATION = commonTasks.getStatus(10);
         PROCESSING = commonTasks.getStatus(11);
+        NEW = commonTasks.getStatus(12);
+        NOTIFICATION_SENT = commonTasks.getStatus(13);
+
+
+        TREASURY_DEALER = commonTasks.getRole(1006);
 
     }
 }

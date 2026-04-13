@@ -10,9 +10,11 @@ import com.kingdom_bank.RFQBackend.enums.*;
 import com.kingdom_bank.RFQBackend.repository.ApprovedDealsRepo;
 import com.kingdom_bank.RFQBackend.repository.CommentsRepo;
 import com.kingdom_bank.RFQBackend.repository.OrderRepository;
+import com.kingdom_bank.RFQBackend.repository.UserRepo;
 import com.kingdom_bank.RFQBackend.service.soa.*;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,7 @@ import static com.kingdom_bank.RFQBackend.util.CommonTasks.generateOrderId;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class RFQService {
     private final AccountDetailsService accountDetailsService;
     private final GetCifClientService getCifClientService;
@@ -46,6 +49,8 @@ public class RFQService {
     private final ApprovedDealsRepo approvedDealsRepo;
     private final CommentsRepo commentsRepo;
     private final PostDealCodeService postDealCodeService;
+    private final NotificationService notificationService;
+    private final UserRepo userRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -414,8 +419,12 @@ public class RFQService {
             log.info("Created order with status successfully: {}", order.getOrderId());
 
 
-            saveComments(request.getComments(),order,user);
 
+            saveComments(request.getComments(),order,user);
+            log.info("Initiating sending of notification......");
+            String message = "RFQ OF ORDER "+order.getOrderId()+" successfully created";
+            notificationService.sendRoleNotification(message,order,constantUtil.TREASURY_DEALER,NotificationType.CREATE_RFQ);
+            log.info("Notification successfully sent to dealer.......");
 
             response.setResponseCode(ApiResponseCode.SUCCESS);
             response.setResponseMessage("Deal Request successfullly Submitted");
@@ -461,6 +470,7 @@ public class RFQService {
             Order order = orderOptional.get();
             order.setNegotiatedRate(new BigDecimal(request.getRate()));
             order.setUpdatedBy(user.getUsername());
+            order.setDealerId(user.getUsername());
             order.setStatus(constantUtil.PENDING_TELLER_APPROVAL);
 
 
@@ -480,6 +490,14 @@ public class RFQService {
 
 
             saveComments(request.getComment(),order,user);
+            log.info("Initiating sending of notification......");
+            String message = "Dealer has updated the rate for ORDER "+order.getOrderId();
+            List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
+            User teller = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(order.getTellerId(),statusList);
+            if(teller!=null){
+                notificationService.sendUserNotification(message,order,teller,NotificationType.DEALER_RATE);
+                log.info("Notification successfully sent to teller {} .......",teller.getUsername());
+            }
 
             response.setResponseMessage("Proposed rate updated successfully");
             response.setResponseCode(ApiResponseCode.SUCCESS);
@@ -588,7 +606,6 @@ public class RFQService {
                 existingOrder.setDealerCode(dealCode);
                 existingOrder.setDateApproved(new Date());
                 existingOrder.setApprovedBy(loggedInUser.getUsername());
-                existingOrder.setDealerId(loggedInUser.getUsername());
 
 
                 PostDealCodeResponse postDealCodeResponse = postDealCodeService.postDealCode(existingOrder);
@@ -597,6 +614,17 @@ public class RFQService {
 
 
                     updateOrderAndCreateApprovedDeals(existingOrder);
+
+
+                    log.info("Initiating sending of notification......");
+                    String message = "Teller has approved the rate "+existingOrder.getNegotiatedRate()+" for ORDER "+existingOrder.getOrderId();
+                    List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
+                    User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
+                    if(dealer!=null){
+                        notificationService.sendUserNotification(message,existingOrder,dealer,NotificationType.RFQ_APPROVED);
+                        log.info("Notification successfully sent to dealer {} .......",dealer.getUsername());
+                    }
+
                     log.info("Deal Order Request {}  successfully  approved", existingOrder.getId());
                     response.setResponseMessage("Deal Request successfully Approved.");
                     Map<String, String> dealInfo = new HashMap<>();
@@ -620,6 +648,15 @@ public class RFQService {
                 orderRepository.save(existingOrder);
 
                 saveComments(request.getDescription(),existingOrder,loggedInUser);
+                log.info("Initiating sending of notification......");
+                String message = "Teller has rejected rate "+existingOrder.getNegotiatedRate()+" for ORDER "+existingOrder.getOrderId();
+                List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
+                User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
+                if(dealer!=null){
+                    notificationService.sendUserNotification(message,existingOrder,dealer,NotificationType.RFQ_REJECTED);
+                    log.info("Notification successfully sent to dealer {} .......",dealer.getUsername());
+                }
+
 
                 log.info("Order {} successfully  rejected",existingOrder.getId());
                 response.setResponseMessage("Order record successfully Rejected.");
@@ -632,6 +669,14 @@ public class RFQService {
                 orderRepository.save(existingOrder);
 
                 saveComments(request.getDescription(),existingOrder,loggedInUser);
+                log.info("Initiating sending of notification......");
+                String message = "Teller has sent a rate request for ORDER "+existingOrder.getOrderId();
+                List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
+                User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
+                if(dealer!=null){
+                    notificationService.sendUserNotification(message,existingOrder,dealer,NotificationType.NEGOTIATE_RATE);
+                    log.info("Notification successfully sent to dealer {} .......",dealer.getUsername());
+                }
 
                 log.info("Order request successfully sent back to dealer {}",existingOrder.getId());
                 response.setResponseMessage("Order request successfully sent back to dealer.");

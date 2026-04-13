@@ -1,6 +1,8 @@
 package com.kingdom_bank.RFQBackend.util;
 
+import com.kingdom_bank.RFQBackend.entity.Role;
 import com.kingdom_bank.RFQBackend.entity.Status;
+import com.kingdom_bank.RFQBackend.repository.RoleRepo;
 import com.kingdom_bank.RFQBackend.repository.StatusRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +26,14 @@ public class CommonTasks {
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private final RoleRepo roleRepo;
 
     public Status getStatus(int id) {
         return statusRepo.findById(id).orElse(null);
+    }
+
+    public Role getRole(int id) {
+        return roleRepo.findById(id).orElse(null);
     }
 
     public String AESdecrypt(String encryptedPassword) throws Exception {
