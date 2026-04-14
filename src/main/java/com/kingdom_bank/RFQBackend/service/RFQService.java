@@ -540,13 +540,15 @@ public class RFQService {
 
             dealRequestsList.forEach(order -> {
                 List<CommentsDto> commentsDtoList = new ArrayList<>();
-                List<Comments> comments = commentsRepo.findByOrder_IdOrderByDateCreatedDesc(order.getId());
+                List<Comments> comments = commentsRepo.findByOrder_IdOrderByDateCreatedAsc(order.getId());
                 if(!comments.isEmpty()){
                     for(Comments comment :comments) {
                       CommentsDto commentsDto = CommentsDto.builder()
                               .comment(comment.getComment())
                               .dateCreated(comment.getDateCreated())
                               .id(comment.getId())
+                              .createdBy(comment.getCreatedBy().getUserId())
+                              .creator(comment.getCreatedBy().getUsername())
                               .build();
                       commentsDtoList.add(commentsDto);
                    }

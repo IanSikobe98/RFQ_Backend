@@ -11,5 +11,8 @@ public class CommentsDto {
     private String comment;
     private Long id;
     private Date dateCreated;
+    private Integer createdBy;
+    private String creator;
+
 
 }
