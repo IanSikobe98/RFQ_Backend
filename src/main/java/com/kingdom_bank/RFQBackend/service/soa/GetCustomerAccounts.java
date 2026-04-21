@@ -67,16 +67,21 @@ public class GetCustomerAccounts {
                 String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
                 customerAccountsResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
-                    customerAccountsResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
                     CustomerAccountSummary summary = parseAccountsFromResponse(response.getBody(), cif);
-                    customerAccountsResponse.setCustomerAccountSummary(summary);
+                    if(!summary.getAccounts().isEmpty()){
+                        customerAccountsResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
+                        customerAccountsResponse.setCustomerAccountSummary(summary);
+                    }
+                    else{
+                        customerAccountsResponse.setResponseMessage("Accounts not Found");
+                    }
                 } else {
                     customerAccountsResponse.setCustomerAccountSummary(null);
                     String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
                     customerAccountsResponse.setResponseMessage(message);
                 }
             } else {
-                customerAccountsResponse.setResponseMessage("HTTP Error: " + response.getStatusCode());
+                customerAccountsResponse.setResponseMessage("Account not Found");
             }
         } catch (Exception e) {
             log.error("GetCustomerAccounts:: Error for Fetching Account for Customer with cif of {}", cif, e);

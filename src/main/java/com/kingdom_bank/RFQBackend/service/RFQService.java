@@ -123,10 +123,10 @@ public class RFQService {
 
                         }
                         else{
-                            log.error("Error occured fetching customer accounts");
+                            log.error("Error occured fetching customer accounts {}",customerAccountsResponse.getResponseMessage());
                             httpServletResponse.setStatus(HttpServletResponse.SC_OK);
                             response.setResponseCode(ApiResponseCode.FAIL);
-                            response.setResponseMessage("Sorry,Error occurred while fetching customer accounts");
+                            response.setResponseMessage(customerAccountsResponse.getResponseMessage());
                             return  response;
                         }
 

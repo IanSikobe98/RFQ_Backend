@@ -834,7 +834,7 @@ public class UserService {
                     String permissionsStr = existingRole.getPermissions();
                     List<String> permissions = Arrays.asList(permissionsStr.split(","));
                     if(!permissions.isEmpty()){
-                        List<RolePrivilege> currentPrivileges =  rolePrivilegeRepo.findByRole_RoleId(existingRole.getId());
+                        List<RolePrivilege> currentPrivileges =  rolePrivilegeRepo.findByRole_RoleId(existingRole.getRole().getRoleId());
                         if(!currentPrivileges.isEmpty()){
                             rolePrivilegeRepo.deleteAll(currentPrivileges);
                         }
