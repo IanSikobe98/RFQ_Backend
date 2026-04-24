@@ -1,6 +1,7 @@
 package com.kingdom_bank.RFQBackend.service;
 
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.kingdom_bank.RFQBackend.config.security.SecurityUser;
@@ -52,6 +53,7 @@ public class RFQService {
     private final NotificationService notificationService;
     private final UserRepo userRepo;
     private final CommonTasks commonTasks;
+    private final ObjectMapper objectMapper;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -862,6 +864,52 @@ public class RFQService {
         log.info("Approved Deals staged successfully , {}", approvedDeal);
     }
 
+
+    public ApiResponse validateAmountInput(AmountValidationDTO request,HttpServletResponse httpServletResponse){
+        ApiResponse response = new ApiResponse();
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            CurrencyAction action = determineCurrencyActionExplicitViaSoa("USD",request.getCurrency());
+
+            ExchangeRequest exchangeRequest = ExchangeRequest.builder()
+                    .transactionAmount("1000")
+                    .fromCurrency("USD")
+                    .toCurrency(request.getCurrency())
+                    .build();
+
+
+            ApiResponse currencyResponse = getSinglePairExchangeRate(exchangeRequest,httpServletResponse);
+            if(!currencyResponse.getResponseCode().equals(ApiResponseCode.SUCCESS)){
+                return currencyResponse;
+            }
+            Map<String, Object> responseData = mapper.convertValue(currencyResponse.getEntity(),
+                    new TypeReference<Map<String, Object>>() {});
+
+            BigDecimal amount = BigDecimal.ZERO;
+            if(action.equals(CurrencyAction.Buy)){
+                amount = new BigDecimal(responseData.getOrDefault("buyingConvertedAmount","0").toString());
+            }
+            else{
+                amount = new BigDecimal(responseData.getOrDefault("sellingConvertedAmount","0").toString());
+            }
+
+//            if(request.getAmount().compareTo(amount) <= 0){
+//                response.setResponseCode(ApiResponseCode.FAIL);
+//                response.setResponseMessage("Amount is less than the threshold amount");
+//                return  response;
+//            }
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Amount is valid");
+            response.setEntity(amount);
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING VALIDATION OF AMOUNT: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during validation of amount");
+        }
+        return response;
+    }
 
 
 }

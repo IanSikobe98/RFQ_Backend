@@ -91,5 +91,14 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/validateAmount")
+    public ApiResponse validateAmount(HttpServletResponse httpServletResponse , @RequestBody @Valid AmountValidationDTO request){
+        log.info("VALIDATE AMOUNT REQUEST :: {}", new Gson().toJson(request));
+        ApiResponse response = rFQService.validateAmountInput(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+
 
 }

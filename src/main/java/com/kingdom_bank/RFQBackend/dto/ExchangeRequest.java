@@ -4,6 +4,7 @@ import lombok.*;
 
 @Getter @Setter @Data @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class ExchangeRequest {
     private String fromCurrency;
     private String toCurrency;

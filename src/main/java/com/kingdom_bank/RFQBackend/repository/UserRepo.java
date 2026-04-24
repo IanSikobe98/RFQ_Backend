@@ -17,6 +17,7 @@ public interface UserRepo extends JpaRepository<User, Integer> {
     List<User> findByEmailEqualsIgnoreCaseAndStatusIn(String email, List<Status> status);
     List<User> findByStatus_StatusIdInOrderByDateAddedDesc(List<Integer> statusId);
     Optional<User> findByUsernameAndStatusIn(String username, List<Status> status);
+    List<User> findByRole_RoleId(Integer roleId);
 
 //    User findDistinctByUsernameEqualsIgnoreCaseAndStatusInAndUser_StatusInAndUser_Org_StatusIn
 }
