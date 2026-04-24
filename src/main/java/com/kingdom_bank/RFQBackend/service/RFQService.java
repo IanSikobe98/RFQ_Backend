@@ -871,6 +871,7 @@ public class RFQService {
             ObjectMapper mapper = new ObjectMapper();
             CurrencyAction action = determineCurrencyActionExplicitViaSoa("USD",request.getCurrency());
 
+            //TODO Add configuration for threshold and currency
             ExchangeRequest exchangeRequest = ExchangeRequest.builder()
                     .transactionAmount("1000")
                     .fromCurrency("USD")
