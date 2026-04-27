@@ -99,6 +99,29 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/checkAvailability")
+    public ApiResponse checkAvailability(HttpServletResponse httpServletResponse){
+        log.info("CHECK AVAILABILITY REQUEST :: ");
+        ApiResponse response = rFQService.validateAvailabilitySchedule(httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/updateSchedule")
+    public ApiResponse updateSchedule(@RequestBody @Valid  UpdateScheduleDTO updateScheduleDTO, HttpServletResponse httpServletResponse){
+        log.info("UPDATE AVAILABILITY SCHEDULE REQUEST :: ");
+        ApiResponse response = rFQService.updateAvailabilitySchedule(updateScheduleDTO,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/fetchSchedule")
+    public ReportResponse fetchSchedule(HttpServletResponse httpServletResponse){
+        log.info("FETCH AVAILABILITY SCHEDULE REQUEST :: ");
+        ReportResponse response = rFQService.fetchAvailabilitySchedule(httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
 
 
 }

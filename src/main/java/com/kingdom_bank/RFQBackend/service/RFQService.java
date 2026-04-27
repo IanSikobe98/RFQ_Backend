@@ -8,10 +8,7 @@ import com.kingdom_bank.RFQBackend.config.security.SecurityUser;
 import com.kingdom_bank.RFQBackend.dto.*;
 import com.kingdom_bank.RFQBackend.entity.*;
 import com.kingdom_bank.RFQBackend.enums.*;
-import com.kingdom_bank.RFQBackend.repository.ApprovedDealsRepo;
-import com.kingdom_bank.RFQBackend.repository.CommentsRepo;
-import com.kingdom_bank.RFQBackend.repository.OrderRepository;
-import com.kingdom_bank.RFQBackend.repository.UserRepo;
+import com.kingdom_bank.RFQBackend.repository.*;
 import com.kingdom_bank.RFQBackend.service.soa.*;
 import com.kingdom_bank.RFQBackend.util.CommonTasks;
 import com.kingdom_bank.RFQBackend.util.ConstantUtil;
@@ -30,6 +27,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static com.kingdom_bank.RFQBackend.enums.Action.*;
@@ -54,6 +53,7 @@ public class RFQService {
     private final UserRepo userRepo;
     private final CommonTasks commonTasks;
     private final ObjectMapper objectMapper;
+    private final AvailabilityConfigRepo availabilityConfigRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -911,6 +911,136 @@ public class RFQService {
         }
         return response;
     }
+
+
+    public ApiResponse validateAvailabilitySchedule(HttpServletResponse httpServletResponse){
+        ApiResponse response = new ApiResponse();
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE");
+            String day = now.format(dayFormatter);
+            Optional<AvailabilityConfiguration> availabilityConfiguration = availabilityConfigRepo.findByDayAndStatus(day,constantUtil.ACTIVE);
+            if(availabilityConfiguration.isEmpty()){
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage("Portal is closed for utilization");
+                response.setEntity(false);
+                return response;
+            }
+            AvailabilityConfiguration schedule = availabilityConfiguration.get();
+
+            LocalTime timeNow = LocalTime.now();
+
+            if(!timeNow.isBefore(schedule.getStartTime()) && !timeNow.isAfter(schedule.getEndTime())){
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage("Portal is available for utilization");
+                response.setEntity(true);
+                return response;
+            }
+            else{
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage("Portal is closed for utilization");
+                response.setEntity(false);
+                return response;
+            }
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING FETCHING AVAILABILITY SCHEDULE: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred fetching availability schedule");
+        }
+        return response;
+    }
+    public ApiResponse updateAvailabilitySchedule(UpdateScheduleDTO updateScheduleDTO ,HttpServletResponse httpServletResponse){
+        ApiResponse response = new ApiResponse();
+        try{
+            User user = getauthenticatedAPIUser();
+            List<AvailabilityItem> items = updateScheduleDTO.getItems();
+            if(items.isEmpty()){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Invalid availability scedule input");
+                return response;
+            }
+
+            List<AvailabilityConfiguration> configurationList = new ArrayList<>();
+            items.forEach(item -> {
+                try {
+                    Optional<AvailabilityConfiguration> availabilityConfiguration = availabilityConfigRepo.findByDay(item.getDay());
+                    int status = item.isEnabled()? 1: 0;
+                    if (availabilityConfiguration.isEmpty()) {
+                        AvailabilityConfiguration configuration = AvailabilityConfiguration.builder()
+                                .day(item.getDay())
+                                .startTime(item.getStartTime() != null  && !item.getStartTime().isEmpty() ?LocalTime.parse(item.getStartTime()):null)
+                                .endTime(item.getEndTime() != null  && !item.getEndTime().isEmpty() ?LocalTime.parse(item.getEndTime()):null)
+                                .status(commonTasks.getStatus(status))
+                                .createdBy(user.getUsername())
+                                .updatedBy(user.getUsername())
+                                .build();
+                        configurationList.add(configuration);
+                    } else {
+                        AvailabilityConfiguration configuration = availabilityConfiguration.get();
+                        configuration.setStartTime(item.getStartTime() != null  && !item.getStartTime().isEmpty() ?LocalTime.parse(item.getStartTime()):null);
+                        configuration.setEndTime(item.getEndTime() != null  && !item.getEndTime().isEmpty() ?LocalTime.parse(item.getEndTime()):null);
+                        configuration.setStatus(commonTasks.getStatus(status));
+                        configuration.setUpdatedBy(user.getUsername());
+                        availabilityConfigRepo.save(configuration);
+                        configurationList.add(configuration);
+                    }
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                    log.error("error in this iteration of item {}",item);
+                }
+            });
+
+            availabilityConfigRepo.saveAll(configurationList);
+            log.info("Configurations Successfully updated");
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Configurations sucessfully updated");
+            return response;
+
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING UPDATE OF AVAILABILITY SCHEDULE: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during update of availability schedule");
+        }
+        return response;
+
+
+    }
+
+    public ReportResponse fetchAvailabilitySchedule(HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        try{
+            List<AvailabilityConfiguration> configurations = availabilityConfigRepo.findAll();
+            List<AvailabilityItem> items = new ArrayList<>();
+            configurations.forEach(configuration -> {
+                AvailabilityItem item = AvailabilityItem.builder()
+                        .day(configuration.getDay())
+                        .key(configuration.getDay().substring(0, 3).toLowerCase())
+                        .enabled(configuration.getStatus().equals(constantUtil.ACTIVE))
+                        .startTime(String.valueOf(configuration.getStartTime()))
+                        .endTime(String.valueOf(configuration.getEndTime()))
+                        .build();
+                items.add(item);
+            });
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Configurations successfully fetched");
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(items), ArrayList.class));
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING FETCH OF SCHEDULE: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during fetching of Configurations successfully");
+        }
+        return response;
+        }
 
 
 }
