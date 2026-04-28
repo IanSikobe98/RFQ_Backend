@@ -54,6 +54,7 @@ public class RFQService {
     private final CommonTasks commonTasks;
     private final ObjectMapper objectMapper;
     private final AvailabilityConfigRepo availabilityConfigRepo;
+    private final AmountConfigurationRepo amountConfigurationRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -1016,17 +1017,19 @@ public class RFQService {
         try{
             List<AvailabilityConfiguration> configurations = availabilityConfigRepo.findAll();
             List<AvailabilityItem> items = new ArrayList<>();
-            configurations.forEach(configuration -> {
-                AvailabilityItem item = AvailabilityItem.builder()
-                        .day(configuration.getDay())
-                        .key(configuration.getDay().substring(0, 3).toLowerCase())
-                        .enabled(configuration.getStatus().equals(constantUtil.ACTIVE))
-                        .startTime(String.valueOf(configuration.getStartTime()))
-                        .endTime(String.valueOf(configuration.getEndTime()))
-                        .build();
-                items.add(item);
-            });
 
+            if(!configurations.isEmpty()) {
+                configurations.forEach(configuration -> {
+                    AvailabilityItem item = AvailabilityItem.builder()
+                            .day(configuration.getDay())
+                            .key(configuration.getDay().substring(0, 3).toLowerCase())
+                            .enabled(configuration.getStatus().equals(constantUtil.ACTIVE))
+                            .startTime(String.valueOf(configuration.getStartTime()))
+                            .endTime(String.valueOf(configuration.getEndTime()))
+                            .build();
+                    items.add(item);
+                });
+            }
             response.setResponseCode(ApiResponseCode.SUCCESS);
             response.setResponseMessage("Configurations successfully fetched");
             ObjectMapper mapper = new ObjectMapper();
@@ -1042,5 +1045,62 @@ public class RFQService {
         return response;
         }
 
+
+    public ApiResponse fetchAmountConfiguration(HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        try{
+            List<AmountConfiguration> configurations = amountConfigurationRepo.findAll();
+            BigDecimal amount = BigDecimal.ZERO;
+            if(!configurations.isEmpty()){
+                amount = configurations.getFirst().getCounterNominalAmount();
+            }
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Configurations successfully fetched");
+            response.setData(amount);
+            log.info("Configurations successfully fetched");
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING FETCH OF AMOUNT CONFIGURATION: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during fetching of amount config");
+        }
+        return response;
+    }
+
+
+    public ApiResponse updateAmountConfiguration(UpdateAmountLimitConfigDTO request,HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        try{
+            List<AmountConfiguration> configurations = amountConfigurationRepo.findAll();
+            BigDecimal amount = BigDecimal.ZERO;
+            if(configurations.isEmpty()){
+                AmountConfiguration  amountConfiguration = AmountConfiguration.builder()
+                        .counterNominalAmount(request.getAmount())
+                        .build();
+                amountConfigurationRepo.save(amountConfiguration);
+            }
+            else{
+                configurations.forEach(configuration -> {
+                   configuration.setCounterNominalAmount(request.getAmount());
+                   amountConfigurationRepo.save(configuration);
+                });
+
+            }
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("Configurations successfully updated");
+            response.setData(amount);
+            log.info("Configurations successfully updated");
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING UPDATE OF AMOUNT THRESHOLD: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during update of Amount threshold configuration");
+        }
+        return response;
+    }
 
 }

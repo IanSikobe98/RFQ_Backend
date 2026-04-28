@@ -123,5 +123,21 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/fetchAmountConfiguration")
+    public ApiResponse fetchAmountConfiguration(HttpServletResponse httpServletResponse){
+        log.info("FETCH AMOUNT CONFIGURATION REQUEST :: ");
+        ApiResponse response = rFQService.fetchAmountConfiguration(httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
+    @PostMapping("/updateAmountConfiguration")
+    public ApiResponse updateAmountConfiguration(@RequestBody @Valid UpdateAmountLimitConfigDTO request,HttpServletResponse httpServletResponse){
+        log.info("UPDATE AMOUNT CONFIGURATION REQUEST :: ");
+        ApiResponse response = rFQService.updateAmountConfiguration(request ,httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
 
 }
