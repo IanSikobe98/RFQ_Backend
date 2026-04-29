@@ -872,9 +872,14 @@ public class RFQService {
             ObjectMapper mapper = new ObjectMapper();
             CurrencyAction action = determineCurrencyActionExplicitViaSoa("USD",request.getCurrency());
 
-            //TODO Add configuration for threshold and currency
+            List<AmountConfiguration> configurations = amountConfigurationRepo.findAll();
+            BigDecimal limitAmount = BigDecimal.ZERO;
+            if(!configurations.isEmpty()){
+                limitAmount = configurations.getFirst().getCounterNominalAmount();
+            }
+
             ExchangeRequest exchangeRequest = ExchangeRequest.builder()
-                    .transactionAmount("1000")
+                    .transactionAmount(String.valueOf(limitAmount))
                     .fromCurrency("USD")
                     .toCurrency(request.getCurrency())
                     .build();

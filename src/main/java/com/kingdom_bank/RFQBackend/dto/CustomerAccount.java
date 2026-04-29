@@ -29,6 +29,7 @@ public class CustomerAccount {
     private Boolean isOfficeAccount = false;
     private Boolean isStaffAccount = false;
     private String schemeCode;
+    private Boolean requiresLimit = false;
 
     @Override
     public String toString() {

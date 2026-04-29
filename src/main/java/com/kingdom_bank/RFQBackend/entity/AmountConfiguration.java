@@ -24,4 +24,7 @@ public class AmountConfiguration {
     @Column(name = "counter_nominal_amount")
     private BigDecimal counterNominalAmount;
 
+    @Column(name ="scheme_codes_exempted")
+    private String schemeCodesExempted;
+
 }

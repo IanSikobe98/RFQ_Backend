@@ -5,7 +5,9 @@ import com.kingdom_bank.RFQBackend.dto.AccountDetailsResponse;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccount;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccountSummary;
 import com.kingdom_bank.RFQBackend.dto.CustomerAccountsResponse;
+import com.kingdom_bank.RFQBackend.entity.AmountConfiguration;
 import com.kingdom_bank.RFQBackend.enums.ApiResponseCode;
+import com.kingdom_bank.RFQBackend.repository.AmountConfigurationRepo;
 import com.kingdom_bank.RFQBackend.util.SoaRequestTemplateUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -25,6 +28,7 @@ import java.util.*;
 @Service
 public class GetCustomerAccounts {
     private final Logger log = LoggerFactory.getLogger(GetCustomerAccounts.class);
+    private final AmountConfigurationRepo amountConfigurationRepo;
 
     @Value("${soa.getCustomerAccounts.endpoint}")
     private String getCustomerAccountsEndpoint;
@@ -32,9 +36,10 @@ public class GetCustomerAccounts {
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
     private final AccountDetailsService accountDetailsService;
 
-    public GetCustomerAccounts(SoaRequestTemplateUtil soaRequestTemplateUtil, AccountDetailsService accountDetailsService) {
+    public GetCustomerAccounts(SoaRequestTemplateUtil soaRequestTemplateUtil, AccountDetailsService accountDetailsService, AmountConfigurationRepo amountConfigurationRepo) {
         this.soaRequestTemplateUtil = soaRequestTemplateUtil;
         this.accountDetailsService = accountDetailsService;
+        this.amountConfigurationRepo = amountConfigurationRepo;
     }
 
     public CustomerAccountsResponse getCustomerAccounts(String cif) {
@@ -159,6 +164,16 @@ public class GetCustomerAccounts {
 
                 if (account.getAccountCode() != null && !account.getAccountCode().isEmpty() && account.getAccountCode().equalsIgnoreCase("STCUR")) {
                     account.setIsStaffAccount(true);
+                }
+
+                List<AmountConfiguration> configurations = amountConfigurationRepo.findAll();
+                String schemeCodesExempted = "";
+                if(!configurations.isEmpty() && configurations.getFirst().getSchemeCodesExempted()!= null){
+                    schemeCodesExempted = configurations.getFirst().getSchemeCodesExempted();
+                }
+                //office and staff accounts do not require limits
+                if(!Arrays.asList(schemeCodesExempted.split(",")).contains(schemeCode)){
+                    account.setRequiresLimit(true);
                 }
 
 //              //First step of filtering out accounts
