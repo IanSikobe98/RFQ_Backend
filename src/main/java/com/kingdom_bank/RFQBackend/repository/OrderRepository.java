@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order,Integer> {
+public interface OrderRepository extends JpaRepository<Order,Long> {
     @Query("SELECT r FROM Order r WHERE r.cifAccountCode = :cifAccountCode " +
             "AND ((:accountNumber IS NULL AND r.accountNumber IS NULL) OR r.accountNumber = :accountNumber) " +
             "AND r.fromCurrency = :fromCurrency " +
@@ -37,6 +37,8 @@ public interface OrderRepository extends JpaRepository<Order,Integer> {
 
 
     List<Order> findByStatus_StatusIdInOrderByDateAddedDesc(List<Integer> statusId);
+
+    List<Order> findByStatusIn(List<Status> statuses);
 
     Double countByStatus(Status status);
 

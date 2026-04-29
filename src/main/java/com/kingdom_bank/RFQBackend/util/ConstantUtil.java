@@ -29,6 +29,8 @@ public class ConstantUtil {
     public Status PROCESSING;
     public Status NEW;
     public Status NOTIFICATION_SENT;
+    public Status EXPIRED;
+
 
     public Role TREASURY_DEALER;
 
@@ -48,6 +50,7 @@ public class ConstantUtil {
         PROCESSING = commonTasks.getStatus(11);
         NEW = commonTasks.getStatus(12);
         NOTIFICATION_SENT = commonTasks.getStatus(13);
+        EXPIRED = commonTasks.getStatus(14);
 
 
         TREASURY_DEALER = commonTasks.getRole(1006);

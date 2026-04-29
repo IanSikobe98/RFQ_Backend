@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class DealCodeRetryRequest {
-    private int  id;
+    private long id;
 }

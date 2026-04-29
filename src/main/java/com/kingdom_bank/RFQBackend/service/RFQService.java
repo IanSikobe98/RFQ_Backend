@@ -464,7 +464,7 @@ public class RFQService {
             User user = getauthenticatedAPIUser();
             log.info("Updating rate for request : {}",request);
 
-            Optional<Order> orderOptional = orderRepository.findById(request.getOrderId());
+            Optional<Order> orderOptional = orderRepository.findById(Long.valueOf(request.getOrderId()));
             if(orderOptional.isEmpty()){
                 response.setResponseCode(ApiResponseCode.FAIL);
                 response.setResponseMessage("Order Not Found");
@@ -588,7 +588,7 @@ public class RFQService {
         log.info("Approving user of id {}...",id);
 
         try {
-            Optional<Order> existingOrderOptional = orderRepository.findById(id);
+            Optional<Order> existingOrderOptional = orderRepository.findById(Long.valueOf(id));
             if (!existingOrderOptional.isPresent()) {
                 response.setResponseCode(ApiResponseCode.FAIL);
                 response.setResponseMessage("User  with id  "+ id+ " does not exist");
@@ -763,7 +763,7 @@ public class RFQService {
     }
 
 
-    public ApiResponse retryPostDealCode(DealCodeRetryRequest request,HttpServletResponse httpServletResponse){
+    public ApiResponse retryPostDealCode(DealCodeRetryRequest request){
         ApiResponse response = new ApiResponse();
         try {
             Optional<Order> order = orderRepository.findById(request.getId());
@@ -1107,5 +1107,7 @@ public class RFQService {
         }
         return response;
     }
+
+
 
 }
