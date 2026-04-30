@@ -67,6 +67,10 @@ public class UsersTemp {
     @Column(name = "COMMENT", length = 100)
     private String comment;
 
+    @ManyToOne
+    @JoinColumn(name = "branch_id", referencedColumnName = "id")
+    private Branch branchId;
+
     @Transient
     private String entityStatusName;
 }

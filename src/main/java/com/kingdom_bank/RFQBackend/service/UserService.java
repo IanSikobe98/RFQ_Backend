@@ -41,6 +41,7 @@ public class UserService {
     private final PrivilegeRepo privilegeRepo;
     private final RoleTempRepo roleTempRepo;
     private final RolePrivilegeRepo rolePrivilegeRepo;
+    private final BranchRepo branchRepo;
     @Value("${params.admin_role}")
     private String adminRole;
     private final Environment environment;
@@ -90,6 +91,15 @@ public class UserService {
             }
             Role userRole = role.get();
 
+            Optional<Branch> branch = branchRepo.findById(request.getBranchId());
+            if(branch.isEmpty()) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Branch of Id  "+ request.getBranchId()+ " does not exist");
+                return response;
+            }
+
+            Branch userBranch = branch.get();
+
                 UsersTemp newUser = UsersTemp.builder()
                         .username(request.getUserName())
                         .phone(request.getPhoneNumber())
@@ -97,6 +107,7 @@ public class UserService {
                         .createdBy(user.getUsername())
                         .dateAdded(new Date())
                         .role(userRole)
+                        .branchId(userBranch)
                         .action(EntityActions.CREATE.getValue())
                         .status(constantUtil.PENDING_APPROVAL)
                         .build();
@@ -171,6 +182,15 @@ public class UserService {
 
             Role role = roleOpt.get();
 
+            Optional<Branch> branch = branchRepo.findById(request.getBranchId());
+            if(branch.isEmpty()) {
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Branch of Id  "+ request.getBranchId()+ " does not exist");
+                return response;
+            }
+
+            Branch userBranch = branch.get();
+
 
             UsersTemp usersTemp = UsersTemp.builder()
                     .user(user)
@@ -178,6 +198,7 @@ public class UserService {
                     .phone(request.getPhoneNumber())
                     .email(request.getEmail())
                     .role(role)
+                    .branchId(userBranch)
                     .createdBy(loggedInUser.getUsername())
                     .dateAdded(new Date())
                     .action(EntityActions.EDIT.getValue())
@@ -378,6 +399,7 @@ public class UserService {
                             .approvedBy(loggedInUser.getUsername())
                             .dateApproved(new Date())
                             .role(existingUser.getRole())
+                            .branchId(existingUser.getBranchId())
                             .status(constantUtil.ACTIVE)
                             .build();
                     userRepo.save(newUser);
@@ -404,6 +426,9 @@ public class UserService {
                     }
                     if(existingUser.getRole()!=null ){
                         currentUser.setRole(existingUser.getRole());
+                    }
+                    if(existingUser.getBranchId()!=null ){
+                        currentUser.setBranchId(existingUser.getBranchId());
                     }
 
                     currentUser.setUpdatedBy(existingUser.getCreatedBy());

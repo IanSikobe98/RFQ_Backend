@@ -139,5 +139,13 @@ public class RFQController {
         return  response;
     }
 
+    @PostMapping("/fetchBranches")
+    public ApiResponse fetchBranches(HttpServletResponse httpServletResponse){
+        log.info("FETCH BRANCHES REQUEST :: ");
+        ApiResponse response = rFQService.fetchBranches(httpServletResponse);
+        log.info("RESPONSE: {}", response);
+        return  response;
+    }
+
 
 }

@@ -55,6 +55,7 @@ public class RFQService {
     private final ObjectMapper objectMapper;
     private final AvailabilityConfigRepo availabilityConfigRepo;
     private final AmountConfigurationRepo amountConfigurationRepo;
+    private final BranchRepo branchRepo;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -394,7 +395,7 @@ public class RFQService {
 //                    .comments(request.getComments())
 //                    .expectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())))
 
-                    .branchId(request.getBranchCode())
+                    .branchId(user.getBranchId())
                     .tellerId(user.getUsername())
 
 //                    .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
@@ -1049,6 +1050,27 @@ public class RFQService {
         }
         return response;
         }
+
+    public ReportResponse fetchBranches(HttpServletResponse httpServletResponse){
+        ReportResponse response = new ReportResponse();
+        try{
+            List<Branch> branches = branchRepo.findAll();
+
+            response.setResponseCode(ApiResponseCode.SUCCESS);
+            response.setResponseMessage("branches successfully fetched");
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            response.setData(mapper.readValue(mapper.writeValueAsString(branches), ArrayList.class));
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING FETCH OF BRANCHES: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred during fetching of Branches successfully");
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+        }
+        return response;
+    }
 
 
     public ApiResponse fetchAmountConfiguration(HttpServletResponse httpServletResponse){

@@ -64,8 +64,9 @@ public class Order {
     @Column(name = "DEALER_ID", length = 50)
     private String dealerId;
 
-    @Column(name = "BRANCH_ID", length = 50)
-    private String branchId;
+    @ManyToOne
+    @JoinColumn(name = "branch_id", referencedColumnName = "id")
+    private Branch branchId;
 
     @Column(name = "NEGOTIATED_RATE", precision = 18, scale = 6)
     private BigDecimal negotiatedRate;

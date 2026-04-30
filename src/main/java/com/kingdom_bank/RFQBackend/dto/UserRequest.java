@@ -21,6 +21,7 @@ public class UserRequest {
     private Integer roleId;
     private String roleName;
     private String comment;
+    private Integer branchId;
 
 
 }

@@ -60,6 +60,10 @@ public class User {
     @Column(name = "APPROVED_BY", length = 100)
     private String approvedBy;
 
+    @ManyToOne
+    @JoinColumn(name = "branch_id", referencedColumnName = "id")
+    private Branch branchId;
+
     @PrePersist
     public void prePersist() {
         this.dateAdded = new Date();
