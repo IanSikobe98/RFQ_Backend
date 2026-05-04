@@ -77,6 +77,7 @@ public class PostDealCodeService {
         String uid = UUID.randomUUID().toString();
         String formattedDate = DateTimeFormatter.ISO_INSTANT
                 .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+        String cif = order.getCifAccountCode() == null? "":order.getCifAccountCode();
 
         return String.format(
                 "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
@@ -103,9 +104,9 @@ public class PostDealCodeService {
                         "      </DealInsertRequest>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                uid,formattedDate, order.getOrderId(),order.getAccountNumber(), order.getCifAccountCode()
+                uid,formattedDate, order.getDealerCode(),order.getAccountNumber(), cif
                 , order.getFromCurrency(),order.getToCurrency(),order.getCounterNominalAmount(),order.getCounterNominalAmount()
-                ,order.getNegotiatedRate(),order.getTreasuryRate(),order.getDealerCode()
+                ,order.getNegotiatedRate(),order.getTreasuryRate(),order.getTellerId()
         );
     }
 
