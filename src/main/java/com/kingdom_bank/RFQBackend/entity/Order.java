@@ -74,6 +74,9 @@ public class Order {
     @Column(name = "TREASURY_RATE", precision = 18, scale = 6)
     private BigDecimal treasuryRate;
 
+    @Column(name = "TREASURY_COST_RATE", precision = 18, scale = 6)
+    private BigDecimal treasuryCostRate;
+
     @Temporal(TemporalType.DATE)
     @Column(name = "VALID_UNTIL")
     private Date validUntil;
@@ -83,6 +86,18 @@ public class Order {
 
     @Column(name = "TO_CURRENCY", length = 100)
     private String toCurrency;
+
+    @Column(name = "STRONG_CURRENCY", length = 100)
+    private String strongCurrency;
+
+    @Column(name = "WEAK_CURRENCY", length = 100)
+    private String weakCurrency;
+
+    @Column(name = "AMOUNT_CURRENCY", length = 100)
+    private String amountCurrency;
+
+    @Column(name = "EXPECTED_AMOUNT_CURRENCY" ,length = 100)
+    private String expectedCurrency;
 
 
     @Column(name = "DEALER_CODE", length = 50)

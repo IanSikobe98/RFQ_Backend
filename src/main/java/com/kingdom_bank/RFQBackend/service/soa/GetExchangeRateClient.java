@@ -66,6 +66,7 @@ public class GetExchangeRateClient {
                 responseData.put("sellingRate", sellRate);
                 responseData.put("buyingConvertedAmount", buyResult.getConvertedAmount());
                 responseData.put("sellingConvertedAmount", sellResult.getConvertedAmount());
+                responseData.put("treasuryRate", buyResult.getTreasuryRate());
 
 
                 soaResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
@@ -295,23 +296,25 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
 
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
                 {
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns2:ExchangeRate>", "</ns2:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns2:ConvertedAmount>", "</ns2:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns2:MultiplyDivide>", "</ns2:MultiplyDivide>");
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns3:ExchangeRate>", "</ns3:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns3:ConvertedAmount>", "</ns3:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns3:MultiplyDivide>", "</ns3:MultiplyDivide>");
+                    String treasuryRate = StringUtils.substringBetween(response.getBody(), "<ns3:TreasuryRate>", "</ns3:TreasuryRate");
 
 
                     result.setSuccess(true);
                     result.setExchangeRate(exchangeRate != null ? Double.parseDouble(exchangeRate) : 0.0);
                     result.setConvertedAmount(convertedAmount != null ? Double.parseDouble(convertedAmount) : 0.0);
                     result.setMultiplyDivide(multiplyDivide!= null ? multiplyDivide: "");
+                    result.setTreasuryRate(treasuryRate!= null? treasuryRate: "");
                 } else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
                     result.setSuccess(false);
                     result.setErrorMessage(message != null ? message : "Unknown error");
                 }
@@ -406,6 +409,17 @@ public class GetExchangeRateClient {
         private double convertedAmount;
         private String errorMessage;
         private String multiplyDivide;
+        private String treasuryRate;
+
+        public String getTreasuryRate() {
+            return treasuryRate;
+        }
+
+        public void setTreasuryRate(String treasuryRate) {
+            this.treasuryRate = treasuryRate;
+        }
+
+
 
         // Getters and setters
         public boolean isSuccess() { return success; }

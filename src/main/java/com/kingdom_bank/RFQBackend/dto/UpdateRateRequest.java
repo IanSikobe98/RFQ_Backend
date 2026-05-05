@@ -8,5 +8,6 @@ public class UpdateRateRequest {
     private Integer orderId;
     private String rate;
     private String comment;
+    private String expectedCurrency;
 
 }

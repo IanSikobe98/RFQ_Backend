@@ -51,18 +51,18 @@ public class DetermineStrongerWeakerCurrencyClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
-                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorCode>", "</ns2:ErrorCode>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorCode>", "</ns3:ErrorCode>");
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS") && errorCode== null )
                 {
                     // Extract exchange rate data
-                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns2:FromCurrency>", "</ns2:FromCurrency>");
-                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns2:ToCurrency>", "</ns2:ToCurrency>");
+                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns3:FromCurrency>", "</ns3:FromCurrency>");
+                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns3:ToCurrency>", "</ns3:ToCurrency>");
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns2:ExchangeRate>", "</ns2:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns2:ConvertedAmount>", "</ns2:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns2:MultiplyDivide>", "</ns2:MultiplyDivide>");
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns3:ExchangeRate>", "</ns3:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns3:ConvertedAmount>", "</ns3:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns3:MultiplyDivide>", "</ns3:MultiplyDivide>");
 
 
                     SoaGetStrongerWeakerDto dto = new SoaGetStrongerWeakerDto();
@@ -76,7 +76,7 @@ public class DetermineStrongerWeakerCurrencyClient {
                     soaResponse.setData(dto);
                 } else {
                     soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
                     soaResponse.setMessage(message);
                 }
             } else {

@@ -372,40 +372,62 @@ public class RFQService {
                 return  response;
             }
 
-
-            Order order = Order.builder()
-                    .orderId(generateOrderId(request.getAccountNumber()))
-                    .accountNumber(request.getAccountNumber())
-                    .customerName(request.getCustomerName())
-                    .tellerCashAccountName(request.getTellerAccountName())
-
-                    .cifAccountCode(request.getCustomerNo())
-
-                    .counterNominalAmount(request.getAmount())
-                    .currencyPair(request.getFromCurrency()+"/"+request.getToCurrency())
+            ExchangeRequest body = ExchangeRequest.builder()
                     .fromCurrency(request.getFromCurrency())
                     .toCurrency(request.getToCurrency())
-                    .buySell(request.getBankDirection().toUpperCase())
-                    .treasuryRate(new BigDecimal(request.getTreasuryRate()))
+                    .account(request.getAccountNumber())
+                    .transactionAmount(String.valueOf(request.getAmount()))
+                    .build();
 
-                    .purpose(request.getPurpose())
-                    .requestDate(new Date())
-                    .valueDate(request.getValueDate())
+            SOAResponse soaResponse = getExchangeRateClient.getExchangeRate(body);
+
+            if (ApiResponseCode.SUCCESS.getCode().equals(soaResponse.getResponseCode())) {
+                log.info("Exchange rates fetched successfully for {} to {}",
+                        body.getFromCurrency(), body.getToCurrency());
+
+                ObjectMapper mapper = new ObjectMapper();
+//                Map<String,Object> responseData = mapper.convertValue(soaResponse.getData(), Map.class);
+                Map<String, Object> responseData = (Map<String, Object>) soaResponse.getData();
+
+                BigDecimal treasurycost = responseData.containsKey("treasuryRate")?new BigDecimal(String.valueOf(responseData.get("treasuryRate"))):null;
+
+                Order order = Order.builder()
+                        .orderId(generateOrderId(request.getAccountNumber()))
+                        .accountNumber(request.getAccountNumber())
+                        .customerName(request.getCustomerName())
+                        .tellerCashAccountName(request.getTellerAccountName())
+
+                        .cifAccountCode(request.getCustomerNo())
+
+                        .counterNominalAmount(request.getAmount())
+                        .currencyPair(request.getFromCurrency()+"/"+request.getToCurrency())
+                        .fromCurrency(request.getFromCurrency())
+                        .toCurrency(request.getToCurrency())
+                        .strongCurrency(request.getStrongCurrency())
+                        .weakCurrency(request.getWeakCurrency())
+                        .amountCurrency(request.getAmountCurrency())
+                        .buySell(request.getBankDirection().toUpperCase())
+                        .treasuryRate(new BigDecimal(request.getTreasuryRate()))
+                        .treasuryCostRate(treasurycost)
+
+                        .purpose(request.getPurpose())
+                        .requestDate(new Date())
+                        .valueDate(request.getValueDate())
 
 //                    .comments(request.getComments())
 //                    .expectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())))
 
-                    .branchId(user.getBranchId())
-                    .tellerId(user.getUsername())
+                        .branchId(user.getBranchId())
+                        .tellerId(user.getUsername())
 
 //                    .negotiatedRate(new BigDecimal(request.getNegotiatedRate()))
 //                    .validUntil(new Date())
 
-                    .createdBy(user.getUsername())
-                    .dateAdded(new Date())
-                    .status(constantUtil.PENDING_DEALER_APPROVAL)
+                        .createdBy(user.getUsername())
+                        .dateAdded(new Date())
+                        .status(constantUtil.PENDING_DEALER_APPROVAL)
 
-                    .build();
+                        .build();
 
 
 //            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
@@ -420,19 +442,33 @@ public class RFQService {
 //                order.setExpectedAmount(request.getAmount().multiply(new BigDecimal(request.getNegotiatedRate())));
 //            }
 
-            orderRepository.saveAndFlush(order);
-            log.info("Created order with status successfully: {}", order.getOrderId());
+                orderRepository.saveAndFlush(order);
+                log.info("Created order with status successfully: {}", order.getOrderId());
 
 
 
-            saveComments(request.getComments(),order,user);
-            log.info("Initiating sending of notification......");
-            String message = "RFQ OF ORDER "+order.getOrderId()+" successfully created";
-            notificationService.sendRoleNotification(message,order,constantUtil.TREASURY_DEALER,NotificationType.CREATE_RFQ);
-            log.info("Notification successfully sent to dealer.......");
+                saveComments(request.getComments(),order,user);
+                log.info("Initiating sending of notification......");
+                String message = "RFQ OF ORDER "+order.getOrderId()+" successfully created";
+                notificationService.sendRoleNotification(message,order,constantUtil.TREASURY_DEALER,NotificationType.CREATE_RFQ);
+                log.info("Notification successfully sent to dealer.......");
 
-            response.setResponseCode(ApiResponseCode.SUCCESS);
-            response.setResponseMessage("Deal Request successfullly Submitted");
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage("Deal Request successfullly Submitted");
+
+            } else {
+                log.error("Failed to get exchange rates from {} to {}. Error: {}",
+                        body.getFromCurrency(), body.getToCurrency(), soaResponse.getMessage());
+
+                httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage(soaResponse.getMessage() != null ?
+                        soaResponse.getMessage() :
+                        "Unable to fetch exchange rates at this time");
+            }
+
+
+
 
         }
         catch (Exception e) {
@@ -476,19 +512,22 @@ public class RFQService {
             order.setNegotiatedRate(new BigDecimal(request.getRate()));
             order.setUpdatedBy(user.getUsername());
             order.setDealerId(user.getUsername());
+            order.setExpectedCurrency(request.getExpectedCurrency());
             order.setStatus(constantUtil.PENDING_TELLER_APPROVAL);
 
 
-            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
-            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
-                    order.getFromCurrency(), order.getToCurrency());
+//            //Determine currency Action so as to know which is stronger so as to know whether to multiply or divide
+//            CurrencyAction currencyAction = determineCurrencyActionExplicitViaSoa(
+//                    order.getFromCurrency(), order.getToCurrency());
 
 
-            if(currencyAction.equals(CurrencyAction.Sell)){
-                order.setExpectedAmount(order.getCounterNominalAmount().divide(new BigDecimal(request.getRate()),2,RoundingMode.HALF_UP));
-            }
-            else if(currencyAction.equals(CurrencyAction.Buy)){
+
+
+            if(order.getAmountCurrency().equals(order.getStrongCurrency())){
                 order.setExpectedAmount(order.getCounterNominalAmount().multiply(new BigDecimal(request.getRate())));
+            }
+            else {
+                order.setExpectedAmount(order.getCounterNominalAmount().divide(new BigDecimal(request.getRate()),2,RoundingMode.HALF_UP));
             }
 
             orderRepository.saveAndFlush(order);

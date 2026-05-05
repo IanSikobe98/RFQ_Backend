@@ -79,6 +79,30 @@ public class PostDealCodeService {
                 .format(Instant.now().truncatedTo(ChronoUnit.MILLIS));
         String cif = order.getCifAccountCode() == null? "":order.getCifAccountCode();
 
+        String boughtCurrency = "";
+        String soldCurrency = "";
+
+        String boughtAmount = "";
+        String soldAmount = "";
+        if(order.getBuySell().equalsIgnoreCase("BUY")){
+            boughtCurrency = order.getStrongCurrency();
+            soldCurrency = order.getWeakCurrency();
+        }
+        else{
+            soldCurrency = order.getStrongCurrency();
+            boughtCurrency = order.getWeakCurrency();
+        }
+
+        if(boughtCurrency.equalsIgnoreCase(order.getAmountCurrency())){
+            boughtAmount = String.valueOf(order.getCounterNominalAmount());
+            soldAmount = String.valueOf(order.getExpectedAmount());
+        }
+        else if(soldCurrency.equalsIgnoreCase(order.getAmountCurrency())){
+            soldAmount = String.valueOf(order.getCounterNominalAmount());
+            boughtAmount = String.valueOf(order.getExpectedAmount());
+        }
+
+
         return String.format(
                 "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
                         "   <soapenv:Header>\n" +
@@ -105,8 +129,8 @@ public class PostDealCodeService {
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
                 uid,formattedDate, order.getDealerCode(),order.getAccountNumber(), cif
-                , order.getFromCurrency(),order.getToCurrency(),order.getCounterNominalAmount(),order.getCounterNominalAmount()
-                ,order.getNegotiatedRate(),order.getTreasuryRate(),order.getTellerId()
+                , boughtCurrency,soldCurrency,boughtAmount,soldAmount
+                ,order.getNegotiatedRate(),order.getTreasuryCostRate(),order.getTellerId()
         );
     }
 
