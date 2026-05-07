@@ -17,6 +17,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -56,6 +57,7 @@ public class RFQService {
     private final AvailabilityConfigRepo availabilityConfigRepo;
     private final AmountConfigurationRepo amountConfigurationRepo;
     private final BranchRepo branchRepo;
+    private final Environment environment;
 
     @Value("${rfq.duplication.threshhold}")
     private String duplicationThreshold;
@@ -910,7 +912,6 @@ public class RFQService {
         ApiResponse response = new ApiResponse();
         try {
             ObjectMapper mapper = new ObjectMapper();
-            CurrencyAction action = determineCurrencyActionExplicitViaSoa("USD",request.getCurrency());
 
             List<AmountConfiguration> configurations = amountConfigurationRepo.findAll();
             BigDecimal limitAmount = BigDecimal.ZERO;
@@ -918,33 +919,35 @@ public class RFQService {
                 limitAmount = configurations.getFirst().getCounterNominalAmount();
             }
 
-            ExchangeRequest exchangeRequest = ExchangeRequest.builder()
-                    .transactionAmount(String.valueOf(limitAmount))
-                    .fromCurrency("USD")
-                    .toCurrency(request.getCurrency())
-                    .build();
+            BigDecimal amount = limitAmount;
+            String standardCurrency = environment.getProperty("rfq.standardCurrency","USD");
+
+            if(!request.getCurrency().equalsIgnoreCase(standardCurrency)) {
+                CurrencyAction action = determineCurrencyActionExplicitViaSoa("USD",request.getCurrency());
+
+                ExchangeRequest exchangeRequest = ExchangeRequest.builder()
+                        .transactionAmount(String.valueOf(limitAmount))
+                        .fromCurrency("USD")
+                        .toCurrency(request.getCurrency())
+                        .build();
 
 
-            ApiResponse currencyResponse = getSinglePairExchangeRate(exchangeRequest,httpServletResponse);
-            if(!currencyResponse.getResponseCode().equals(ApiResponseCode.SUCCESS)){
-                return currencyResponse;
+                ApiResponse currencyResponse = getSinglePairExchangeRate(exchangeRequest, httpServletResponse);
+                if (!currencyResponse.getResponseCode().equals(ApiResponseCode.SUCCESS)) {
+                    return currencyResponse;
+                }
+                Map<String, Object> responseData = mapper.convertValue(currencyResponse.getEntity(),
+                        new TypeReference<Map<String, Object>>() {
+                        });
+
+
+                if (action.equals(CurrencyAction.Buy)) {
+                    amount = new BigDecimal(responseData.getOrDefault("buyingConvertedAmount", "0").toString());
+                } else {
+                    amount = new BigDecimal(responseData.getOrDefault("sellingConvertedAmount", "0").toString());
+                }
             }
-            Map<String, Object> responseData = mapper.convertValue(currencyResponse.getEntity(),
-                    new TypeReference<Map<String, Object>>() {});
 
-            BigDecimal amount = BigDecimal.ZERO;
-            if(action.equals(CurrencyAction.Buy)){
-                amount = new BigDecimal(responseData.getOrDefault("buyingConvertedAmount","0").toString());
-            }
-            else{
-                amount = new BigDecimal(responseData.getOrDefault("sellingConvertedAmount","0").toString());
-            }
-
-//            if(request.getAmount().compareTo(amount) <= 0){
-//                response.setResponseCode(ApiResponseCode.FAIL);
-//                response.setResponseMessage("Amount is less than the threshold amount");
-//                return  response;
-//            }
             response.setResponseCode(ApiResponseCode.SUCCESS);
             response.setResponseMessage("Amount is valid");
             response.setEntity(amount);
@@ -953,7 +956,7 @@ public class RFQService {
             log.error("ERROR OCCURRED DURING VALIDATION OF AMOUNT: {}" ,e.getMessage());
             e.printStackTrace();
             response.setResponseCode(ApiResponseCode.FAIL);
-            response.setResponseMessage("Sorry,Error occurred during validation of amount");
+            response.setResponseMessage("Sorry,Error occurred when fetching amount threshold");
         }
         return response;
     }
