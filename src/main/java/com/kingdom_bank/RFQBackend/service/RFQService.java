@@ -402,7 +402,7 @@ public class RFQService {
                         .cifAccountCode(request.getCustomerNo())
 
                         .counterNominalAmount(request.getAmount())
-                        .currencyPair(request.getFromCurrency()+"/"+request.getToCurrency())
+                        .currencyPair(request.getStrongCurrency()+"/"+request.getWeakCurrency())
                         .fromCurrency(request.getFromCurrency())
                         .toCurrency(request.getToCurrency())
                         .strongCurrency(request.getStrongCurrency())
