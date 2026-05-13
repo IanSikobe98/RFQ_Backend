@@ -8,4 +8,5 @@ import java.math.BigDecimal;
 public class AmountValidationDTO {
     private BigDecimal amount;
     private String currency;
+    private String bankDirection;
 }

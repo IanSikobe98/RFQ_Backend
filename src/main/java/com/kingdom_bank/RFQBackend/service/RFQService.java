@@ -941,7 +941,7 @@ public class RFQService {
                         });
 
 
-                if (action.equals(CurrencyAction.Buy)) {
+                if (request.getBankDirection().equalsIgnoreCase(String.valueOf(CurrencyAction.Buy))) {
                     amount = new BigDecimal(responseData.getOrDefault("buyingConvertedAmount", "0").toString());
                 } else {
                     amount = new BigDecimal(responseData.getOrDefault("sellingConvertedAmount", "0").toString());
