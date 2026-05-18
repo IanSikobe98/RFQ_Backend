@@ -33,6 +33,9 @@ public class GetCustomerAccounts {
     @Value("${soa.getCustomerAccounts.endpoint}")
     private String getCustomerAccountsEndpoint;
 
+    @Value("${soa.channel.id}")
+    private String channelId;
+
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
     private final AccountDetailsService accountDetailsService;
 
@@ -105,7 +108,7 @@ public class GetCustomerAccounts {
                         "   <soapenv:Header>\n" +
                         "      <ns1:RequestHeader xmlns:ns1=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "         <ns1:RequestId>%s</ns1:RequestId>\n" +
-                        "         <ns1:ChannelId>COR</ns1:ChannelId>\n" +
+                        "         <ns1:ChannelId>%s</ns1:ChannelId>\n" +
                         "         <ns1:Timestamp>%s</ns1:Timestamp>\n" +
                         "      </ns1:RequestHeader>\n" +
                         "   </soapenv:Header>\n" +
@@ -115,7 +118,7 @@ public class GetCustomerAccounts {
                         "      </ns1:GetCustomerAccountsRequest>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>\n",
-                 uid, formattedDate, cif
+                 uid,channelId, formattedDate, cif
         );
     }
 

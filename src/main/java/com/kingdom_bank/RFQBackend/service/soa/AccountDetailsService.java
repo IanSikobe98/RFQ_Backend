@@ -28,6 +28,9 @@ public class AccountDetailsService {
     @Value("${soa.accountdetails.endpoint}")
     private String accountDetailsEndpoint;
 
+    @Value("${soa.channel.id}")
+    private String channelId;
+
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
     public AccountDetailsService(SoaRequestTemplateUtil soaRequestTemplateUtil) {
@@ -95,7 +98,7 @@ public class AccountDetailsService {
                 "    <soapenv:Header>\n" +
                 "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                 "            <RequestId>%s</RequestId>\n" +
-                "            <ChannelId>COR</ChannelId>\n" +
+                "            <ChannelId>%s</ChannelId>\n" +
                 "            <Timestamp>%s</Timestamp>\n" +
                 "        </RequestHeader>\n" +
                 "    </soapenv:Header>\n" +
@@ -104,7 +107,7 @@ public class AccountDetailsService {
                 "            <AccountID>%s</AccountID>\n" +
                 "        </GetAccountDetails>\n" +
                 "    </soapenv:Body>\n" +
-                "</soapenv:Envelope>", uid,formattedDate, accountNumber);
+                "</soapenv:Envelope>", uid,channelId,formattedDate, accountNumber);
 
 
         return request;

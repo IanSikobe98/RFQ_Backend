@@ -30,6 +30,9 @@ public class GetExchangeRateClient {
     @Value("${soa.getAllExchangeRates.endpoint}")
     private String getAllExchangeRatesEndpoint;
 
+    @Value("${soa.channel.id}")
+    private String channelId;
+
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
     public GetExchangeRateClient( SoaRequestTemplateUtil soaRequestTemplateUtil) {
@@ -187,7 +190,7 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     return parseExchangeRateList(response.getBody());
@@ -215,7 +218,7 @@ public class GetExchangeRateClient {
         try {
             // Pattern to match ExchangeRateListItem elements
             Pattern itemPattern = Pattern.compile(
-                    "<ns3:RateList>(.*?)</ns3:RateList>",
+                    "<ns2:RateList>(.*?)</ns2:RateList>",
                     Pattern.DOTALL
             );
 
@@ -269,7 +272,7 @@ public class GetExchangeRateClient {
      * Extract value from XML string using tag name
      */
     private String extractValue(String xml, String tagName) {
-        return StringUtils.substringBetween(xml, "<ns3:" + tagName + ">", "</ns3:" + tagName + ">");
+        return StringUtils.substringBetween(xml, "<ns2:" + tagName + ">", "</ns2:" + tagName + ">");
     }
 
     /**
@@ -296,16 +299,16 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
 
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
                 {
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns3:ExchangeRate>", "</ns3:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns3:ConvertedAmount>", "</ns3:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns3:MultiplyDivide>", "</ns3:MultiplyDivide>");
-                    String treasuryRate = StringUtils.substringBetween(response.getBody(), "<ns3:TreasuryRate>", "</ns3:TreasuryRate");
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns4:ExchangeRate>", "</ns4:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns4:ConvertedAmount>", "</ns4:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns4:MultiplyDivide>", "</ns4:MultiplyDivide>");
+                    String treasuryRate = StringUtils.substringBetween(response.getBody(), "<ns4:TreasuryRate>", "</ns4:TreasuryRate");
 
 
                     result.setSuccess(true);
@@ -314,7 +317,7 @@ public class GetExchangeRateClient {
                     result.setMultiplyDivide(multiplyDivide!= null ? multiplyDivide: "");
                     result.setTreasuryRate(treasuryRate!= null? treasuryRate: "");
                 } else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorDesc>", "</ns4:ErrorDesc>");
                     result.setSuccess(false);
                     result.setErrorMessage(message != null ? message : "Unknown error");
                 }
@@ -346,7 +349,7 @@ public class GetExchangeRateClient {
                         "    <soapenv:Header>\n" +
                         "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "            <RequestId>%s</RequestId>\n" +
-                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <ChannelId>%s</ChannelId>\n" +
                         "            <Timestamp>%s</Timestamp>\n" +
                         "        </RequestHeader>\n" +
                         "    </soapenv:Header>\n" +
@@ -360,6 +363,7 @@ public class GetExchangeRateClient {
                         "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
                 uid,
+                channelId,
                 formattedDate,
                 exchangeRequest.getTransactionAmount(),
                 rateCode,
@@ -389,7 +393,7 @@ public class GetExchangeRateClient {
                         "    <soapenv:Header>\n" +
                         "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "            <RequestId>%s</RequestId>\n" +
-                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <ChannelId>%s</ChannelId>\n" +
                         "            <Timestamp>%s</Timestamp>\n" +
                         "        </RequestHeader>\n" +
                         "    </soapenv:Header>\n" +
@@ -398,6 +402,7 @@ public class GetExchangeRateClient {
                         "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
                 uid,
+                channelId,
                 formattedDate
         );
     }

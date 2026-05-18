@@ -28,6 +28,9 @@ public class GetCifClientService {
     @Value("${soa.getCustomerID.endpoint}")
     private String getCustomerCifEndpoint;
 
+    @Value("${soa.channel.id}")
+    private String channelId;
+
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
     public GetCifClientService(SoaRequestTemplateUtil soaRequestTemplateUtil) {
@@ -55,17 +58,17 @@ public class GetCifClientService {
             if (response.getStatusCode().is2xxSuccessful()) {
 
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
                 cifResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     cifResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
-                    String cif = StringUtils.substringBetween(response.getBody(), "<ns3:CifId>", "</ns3:CifId>");
+                    String cif = StringUtils.substringBetween(response.getBody(), "<ns2:CifId>", "</ns2:CifId>");
 
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO
                             .builder().customerCode(cif).build();
                     cifResponse.setAccountDetails(accountDetailsDTO);
                 }else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
                     cifResponse.setResponseMessage(message);
                 }
 
@@ -89,7 +92,7 @@ public class GetCifClientService {
                         "   <soapenv:Header>\n" +
                         "      <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "         <RequestId>%s</RequestId>\n" +
-                        "         <ChannelId>COR</ChannelId>\n" +
+                        "         <ChannelId>%s</ChannelId>\n" +
                         "         <Timestamp>%s</Timestamp>\n" +
                         "      </RequestHeader>\n" +
                         "   </soapenv:Header>\n" +
@@ -100,6 +103,6 @@ public class GetCifClientService {
                         "      </CustomerIDInquiry>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                uid,formattedDate, documentType, documentNumber
+                uid,channelId,formattedDate, documentType, documentNumber
         );
     }}

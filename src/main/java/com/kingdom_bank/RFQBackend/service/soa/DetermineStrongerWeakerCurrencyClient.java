@@ -28,6 +28,9 @@ public class DetermineStrongerWeakerCurrencyClient {
     @Value("${soa.getExchangeRate.endpoint}")
     private String getExchangeRateEndpoint;
 
+    @Value("${soa.channel.id}")
+    private String channelId;
+
     private final SoaRequestTemplateUtil soaRequestTemplateUtil;
 
     public DetermineStrongerWeakerCurrencyClient(SoaRequestTemplateUtil soaRequestTemplateUtil) {
@@ -51,18 +54,18 @@ public class DetermineStrongerWeakerCurrencyClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns3:Status>", "</ns3:Status>");
-                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorCode>", "</ns3:ErrorCode>");
+                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
+                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorCode>", "</ns4:ErrorCode>");
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS") && errorCode== null )
                 {
                     // Extract exchange rate data
-                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns3:FromCurrency>", "</ns3:FromCurrency>");
-                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns3:ToCurrency>", "</ns3:ToCurrency>");
+                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns4:FromCurrency>", "</ns4:FromCurrency>");
+                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns4:ToCurrency>", "</ns4:ToCurrency>");
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns3:ExchangeRate>", "</ns3:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns3:ConvertedAmount>", "</ns3:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns3:MultiplyDivide>", "</ns3:MultiplyDivide>");
+                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns4:ExchangeRate>", "</ns4:ExchangeRate>");
+                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns4:ConvertedAmount>", "</ns4:ConvertedAmount>");
+                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns4:MultiplyDivide>", "</ns4:MultiplyDivide>");
 
 
                     SoaGetStrongerWeakerDto dto = new SoaGetStrongerWeakerDto();
@@ -76,7 +79,7 @@ public class DetermineStrongerWeakerCurrencyClient {
                     soaResponse.setData(dto);
                 } else {
                     soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns3:ErrorDesc>", "</ns3:ErrorDesc>");
+                    String message = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorDesc>", "</ns4:ErrorDesc>");
                     soaResponse.setMessage(message);
                 }
             } else {
@@ -101,7 +104,7 @@ public class DetermineStrongerWeakerCurrencyClient {
                         "    <soapenv:Header>\n" +
                         "        <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "            <RequestId>%s</RequestId>\n" +
-                        "            <ChannelId>COR</ChannelId>\n" +
+                        "            <ChannelId>%s</ChannelId>\n" +
                         "            <Timestamp>%s</Timestamp>\n" +
                         "        </RequestHeader>\n" +
                         "    </soapenv:Header>\n" +
@@ -114,7 +117,7 @@ public class DetermineStrongerWeakerCurrencyClient {
                         "        </GetExchangeRates>\n" +
                         "    </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                uid, formattedDate, transactionAmount, toCurrency , fromCurrency
+                uid,channelId, formattedDate, transactionAmount, toCurrency , fromCurrency
         );
     }
 }

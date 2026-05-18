@@ -29,6 +29,8 @@ public class PostDealCodeService {
 
     @Value("${soa.postDealCode.endpoint}")
     private String postDealCodeEndpoint;
+    @Value("${soa.channel.id}")
+    private String channelId;
 
     public PostDealCodeResponse postDealCode(Order order) {
         PostDealCodeResponse postDealCodeResponse = PostDealCodeResponse.builder().responseCode(ApiResponseCode.FAIL.getCode()).build();
@@ -108,7 +110,7 @@ public class PostDealCodeService {
                         "   <soapenv:Header>\n" +
                         "      <RequestHeader xmlns=\"https://kingdombankltd.co.ke/banking/core\">\n" +
                         "         <RequestId>%s</RequestId>\n" +
-                        "         <ChannelId>068</ChannelId>\n" +
+                        "         <ChannelId>%s</ChannelId>\n" +
                         "         <Timestamp>%s</Timestamp>\n" +
                         "      </RequestHeader>\n" +
                         "   </soapenv:Header>\n" +
@@ -128,7 +130,9 @@ public class PostDealCodeService {
                         "      </DealInsertRequest>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
-                uid,formattedDate, order.getDealerCode(),order.getAccountNumber(), cif
+                uid,
+                channelId,
+                formattedDate, order.getDealerCode(),order.getAccountNumber(), cif
                 , boughtCurrency,soldCurrency,boughtAmount,soldAmount
                 ,order.getNegotiatedRate(),order.getTreasuryCostRate(),order.getTellerId()
         );
