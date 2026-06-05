@@ -19,6 +19,8 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -53,14 +55,14 @@ public class PostDealCodeService {
             if (response.getStatusCode().is2xxSuccessful()) {
 
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
                 postDealCodeResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     postDealCodeResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:Message>", "</ns2:Message>");
+                    String message = getTagValue(response.getBody(), "Message");
                     postDealCodeResponse.setResponseMessage(message);
                 }else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    String message = getTagValue(response.getBody(), "ErrorDesc");
                     postDealCodeResponse.setResponseMessage(message);
                 }
 
@@ -136,6 +138,16 @@ public class PostDealCodeService {
                 , boughtCurrency,soldCurrency,boughtAmount,soldAmount
                 ,order.getNegotiatedRate(),order.getTreasuryCostRate(),order.getTellerId()
         );
+    }
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
 }

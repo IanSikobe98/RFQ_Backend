@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -54,18 +56,18 @@ public class DetermineStrongerWeakerCurrencyClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
-                String errorCode = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorCode>", "</ns4:ErrorCode>");
+                String statusCode = getTagValue(response.getBody(), "Status");
+                String errorCode = getTagValue(response.getBody(), "ErrorCode");
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS") && errorCode== null )
                 {
                     // Extract exchange rate data
-                    String responseFromCurrency = StringUtils.substringBetween(response.getBody(), "<ns4:FromCurrency>", "</ns4:FromCurrency>");
-                    String responseToCurrency = StringUtils.substringBetween(response.getBody(), "<ns4:ToCurrency>", "</ns4:ToCurrency>");
+                    String responseFromCurrency = getTagValue(response.getBody(), "FromCurrency");
+                    String responseToCurrency = getTagValue(response.getBody(), "ToCurrency");
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns4:ExchangeRate>", "</ns4:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns4:ConvertedAmount>", "</ns4:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns4:MultiplyDivide>", "</ns4:MultiplyDivide>");
+                    String exchangeRate = getTagValue(response.getBody(), "ExchangeRate");
+                    String convertedAmount = getTagValue(response.getBody(), "ConvertedAmount");
+                    String multiplyDivide = getTagValue(response.getBody(), "MultiplyDivide");
 
 
                     SoaGetStrongerWeakerDto dto = new SoaGetStrongerWeakerDto();
@@ -79,7 +81,7 @@ public class DetermineStrongerWeakerCurrencyClient {
                     soaResponse.setData(dto);
                 } else {
                     soaResponse.setResponseCode(ApiResponseCode.FAIL.getCode());
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorDesc>", "</ns4:ErrorDesc>");
+                    String message = getTagValue(response.getBody(), "ErrorDesc");
                     soaResponse.setMessage(message);
                 }
             } else {
@@ -119,5 +121,15 @@ public class DetermineStrongerWeakerCurrencyClient {
                         "</soapenv:Envelope>",
                 uid,channelId, formattedDate, transactionAmount, toCurrency , fromCurrency
         );
+    }
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
     }
 }

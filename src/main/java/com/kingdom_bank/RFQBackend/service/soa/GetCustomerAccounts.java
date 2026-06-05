@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 @Service
@@ -72,7 +74,7 @@ public class GetCustomerAccounts {
 
             if (response.getStatusCode().is2xxSuccessful()) {
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
                 customerAccountsResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     CustomerAccountSummary summary = parseAccountsFromResponse(response.getBody(), cif);
@@ -85,7 +87,7 @@ public class GetCustomerAccounts {
                     }
                 } else {
                     customerAccountsResponse.setCustomerAccountSummary(null);
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    String message = getTagValue(response.getBody(), "ErrorDesc");
                     customerAccountsResponse.setResponseMessage(message);
                 }
             } else {
@@ -127,25 +129,26 @@ public class GetCustomerAccounts {
 
         try {
             // Split response by account records
-            String[] accountRecords = xmlResponse.split(" <ns4:CustAccLLRec>");
+//            String[] accountRecords = xmlResponse.split(" <ns4:CustAccLLRec>");
+            String[] accountRecords = xmlResponse.split("\\s*<\\w+:CustAccLLRec>");
 
             for (int i = 1; i < accountRecords.length; i++) {
                 String record = accountRecords[i];
 
                 CustomerAccount account = new CustomerAccount();
 
-                String schemeCode = StringUtils.substringBetween(record, "<ns4:SchmCode>", "</ns4:SchmCode>");
-                String accountNumber = StringUtils.substringBetween(record, "<ns4:AcctId>", "</ns4:AcctId>");
-                String accountName = StringUtils.substringBetween(record, "<ns4:AcctName>", "</ns4:AcctName>");
-                String currency = StringUtils.substringBetween(record, "<ns4:Crncy>", "</ns4:Crncy>");
-                String accountDescription = StringUtils.substringBetween(record, "<ns4:AcctName>", "</ns4:AcctName>");
-                String balance = StringUtils.substringBetween(record, "<ns4:Bal>", "</ns4:Bal>");
-                String freezeCode = StringUtils.substringBetween(record, "<ns4:FreezeCode>", "</ns4:FreezeCode>");
-                String relationType = StringUtils.substringBetween(record, "<ns4:RelationType>", "</ns4:RelationType>");
-                if (freezeCode == null && record.contains("<ns4:FreezeCode/>")) {
+                String schemeCode = getTagValue(record, "SchmCode");
+                String accountNumber = getTagValue(record, "AcctId");
+                String accountName = getTagValue(record, "AcctName");
+                String currency = getTagValue(record, "Crncy");
+                String accountDescription = getTagValue(record, "AcctName");
+                String balance = getTagValue(record, "Bal");
+                String freezeCode = getTagValue(record, "FreezeCode");
+                String relationType = getTagValue(record, "RelationType");
+                if (freezeCode == null && containsSelfClosingTag(record, "FreezeCode")) {
                     freezeCode = "";
                 }
-                String accountClosureFlag = StringUtils.substringBetween(record, "<ns4:AcctClsFlg>", "</ns4:AcctClsFlg>");
+                String accountClosureFlag = getTagValue(record, "AcctClsFlg");
                 String customerCif = cif;
                 if (customerCif == null || customerCif.isEmpty()) {
                     customerCif = cif;
@@ -285,6 +288,22 @@ public class GetCustomerAccounts {
             log.warn("Error extracting year from date: {}", dateString);
             return "";
         }
+    }
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private boolean containsSelfClosingTag(String xml, String tagName) {
+        return Pattern.compile(
+                "<(?:\\w+:)?" + Pattern.quote(tagName) + "\\s*/>"
+        ).matcher(xml).find();
     }
 }
 

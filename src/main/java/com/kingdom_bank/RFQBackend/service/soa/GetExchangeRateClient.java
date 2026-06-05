@@ -190,7 +190,7 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     return parseExchangeRateList(response.getBody());
@@ -209,6 +209,16 @@ public class GetExchangeRateClient {
         }
     }
 
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
+    }
     /**
      * Parse the XML response to extract exchange rate list items
      */
@@ -217,20 +227,27 @@ public class GetExchangeRateClient {
 
         try {
             // Pattern to match ExchangeRateListItem elements
+//            Pattern itemPattern = Pattern.compile(
+//                    "<ns2:RateList>(.*?)</ns2:RateList>",
+//                    Pattern.DOTALL
+//            );
+
+
             Pattern itemPattern = Pattern.compile(
-                    "<ns2:RateList>(.*?)</ns2:RateList>",
+                    "<\\w+:RateList>(.*?)</\\w+:RateList>",
                     Pattern.DOTALL
             );
+
 
             Matcher itemMatcher = itemPattern.matcher(xmlResponse);
 
             while (itemMatcher.find()) {
                 String itemXml = itemMatcher.group(1);
 
-                String fromCurrency = extractValue(itemXml, "FXD_CRNCY_CODE");
-                String toCurrency = extractValue(itemXml, "VAR_CRNCY_CODE");
-                String rateCode = extractValue(itemXml, "RateCode");
-                String exchangeRateStr = extractValue(itemXml, "VAR_CRNCY_UNITS");
+                String fromCurrency = getTagValue(itemXml, "FXD_CRNCY_CODE");
+                String toCurrency = getTagValue(itemXml, "VAR_CRNCY_CODE");
+                String rateCode = getTagValue(itemXml, "RateCode");
+                String exchangeRateStr = getTagValue(itemXml, "VAR_CRNCY_UNITS");
 
                 if (fromCurrency != null && toCurrency != null && exchangeRateStr != null) {
                     try {
@@ -271,9 +288,9 @@ public class GetExchangeRateClient {
     /**
      * Extract value from XML string using tag name
      */
-    private String extractValue(String xml, String tagName) {
-        return StringUtils.substringBetween(xml, "<ns2:" + tagName + ">", "</ns2:" + tagName + ">");
-    }
+//    private String extractValue(String xml, String tagName) {
+//        return StringUtils.substringBetween(xml, "<ns2:" + tagName + ">", "</ns2:" + tagName + ">");
+//    }
 
     /**
      * Get single exchange rate (existing method)
@@ -299,16 +316,16 @@ public class GetExchangeRateClient {
 
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns4:Status>", "</ns4:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
 
 
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS"))
                 {
                     // Extract exchange rate data
-                    String exchangeRate = StringUtils.substringBetween(response.getBody(), "<ns4:ExchangeRate>", "</ns4:ExchangeRate>");
-                    String convertedAmount = StringUtils.substringBetween(response.getBody(), "<ns4:ConvertedAmount>", "</ns4:ConvertedAmount>");
-                    String multiplyDivide = StringUtils.substringBetween(response.getBody(), "<ns4:MultiplyDivide>", "</ns4:MultiplyDivide>");
-                    String treasuryRate = StringUtils.substringBetween(response.getBody(), "<ns4:TreasuryRate>", "</ns4:TreasuryRate");
+                    String exchangeRate = getTagValue(response.getBody(), "ExchangeRate");
+                    String convertedAmount = getTagValue(response.getBody(), "ConvertedAmount");
+                    String multiplyDivide = getTagValue(response.getBody(), "MultiplyDivide");
+                    String treasuryRate = getTagValue(response.getBody(), "TreasuryRate");
 
 
                     result.setSuccess(true);
@@ -317,7 +334,7 @@ public class GetExchangeRateClient {
                     result.setMultiplyDivide(multiplyDivide!= null ? multiplyDivide: "");
                     result.setTreasuryRate(treasuryRate!= null? treasuryRate: "");
                 } else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns4:ErrorDesc>", "</ns4:ErrorDesc>");
+                    String message = getTagValue(response.getBody(), "ErrorDesc");
                     result.setSuccess(false);
                     result.setErrorMessage(message != null ? message : "Unknown error");
                 }

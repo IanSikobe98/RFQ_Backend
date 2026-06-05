@@ -19,6 +19,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class AccountDetailsService {
@@ -45,23 +47,23 @@ public class AccountDetailsService {
             ResponseEntity<String> response = soaRequestTemplateUtil.sendSoaRequest("GetAccountDetails", "GetAccountDetails", accountDetailsEndpoint, accountInquiryRequest(accountNumber),"1"
             );
             if (response.getStatusCode().is2xxSuccessful()) {
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
 //                String messageCode = StringUtils.substringBetween(response.getBody(), "<head:MessageCode>", "</head:MessageCode>");
 //                String message = StringUtils.substringBetween(response.getBody(), "<head:MessageDescription>", "</head:MessageDescription>");
                 balanceInquiryResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO.builder()
-                            .customerCode(extractResponseDetail("CustomerId", response.getBody()))
-                            .mobileNumber(extractResponseDetail("MobileNumber", response.getBody()))
-                            .accountStatus(extractResponseDetail("AccountStatus", response.getBody()))
-                            .accountOpenDate(extractResponseDetail("AccountOpenDate", response.getBody()))
-                            .accountName(extractResponseDetail("AccountName", response.getBody()))
-                            .currencyCode(extractResponseDetail("Currency", response.getBody()))
-                            .productId(extractResponseDetail("SchemeType", response.getBody()))
-                            .productContextCode(extractResponseDetail("SchemeCode", response.getBody()))
-                            .productName(extractResponseDetail("SchemeCodeDesc", response.getBody()))
-                            .branchCode(extractResponseDetail("BranchId", response.getBody()))
-                            .balance(extractResponseDetail("AvailableBalance", response.getBody()))
+                            .customerCode(getTagValue(response.getBody(),"CustomerId"))
+                            .mobileNumber(getTagValue( response.getBody(),"MobileNumber"))
+                            .accountStatus(getTagValue(response.getBody(),"AccountStatus"))
+                            .accountOpenDate(getTagValue(response.getBody(),"AccountOpenDate"))
+                            .accountName(getTagValue(response.getBody(),"AccountName"))
+                            .currencyCode(getTagValue(response.getBody(),"Currency"))
+                            .productId(getTagValue(response.getBody(),"SchemeType"))
+                            .productContextCode(getTagValue(response.getBody(),"SchemeCode"))
+                            .productName(getTagValue(response.getBody(),"SchemeCodeDesc"))
+                            .branchCode(getTagValue(response.getBody(),"BranchId"))
+                            .balance(getTagValue(response.getBody(),"AvailableBalance"))
                             .build();
                     balanceInquiryResponse.setAccountDetails(accountDetailsDTO);
                     balanceInquiryResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
@@ -113,8 +115,18 @@ public class AccountDetailsService {
         return request;
     }
 
-    private String extractResponseDetail(String key,String response){
-        return  StringUtils.substringBetween(response, String.format("<ns2:%s>",key), String.format("</ns2:%s>",key));
+//    private String extractResponseDetail(String key,String response){
+//        return  StringUtils.substringBetween(response, String.format("<ns2:%s>",key), String.format("</ns2:%s>",key));
+//    }
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
 }

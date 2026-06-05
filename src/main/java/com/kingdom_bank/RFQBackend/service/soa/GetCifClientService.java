@@ -19,6 +19,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 @Service
@@ -58,17 +60,17 @@ public class GetCifClientService {
             if (response.getStatusCode().is2xxSuccessful()) {
 
 
-                String statusCode = StringUtils.substringBetween(response.getBody(), "<ns2:Status>", "</ns2:Status>");
+                String statusCode = getTagValue(response.getBody(), "Status");
                 cifResponse.setResponseMessage(statusCode);
                 if (statusCode != null && statusCode.equalsIgnoreCase("SUCCESS")) {
                     cifResponse.setResponseCode(ApiResponseCode.SUCCESS.getCode());
-                    String cif = StringUtils.substringBetween(response.getBody(), "<ns2:CifId>", "</ns2:CifId>");
+                    String cif = getTagValue(response.getBody(), "CifId");
 
                     AccountDetailsDTO accountDetailsDTO = AccountDetailsDTO
                             .builder().customerCode(cif).build();
                     cifResponse.setAccountDetails(accountDetailsDTO);
                 }else {
-                    String message = StringUtils.substringBetween(response.getBody(), "<ns2:ErrorDesc>", "</ns2:ErrorDesc>");
+                    String message = getTagValue(response.getBody(), "ErrorDesc");
                     cifResponse.setResponseMessage(message);
                 }
 
@@ -105,4 +107,16 @@ public class GetCifClientService {
                         "</soapenv:Envelope>",
                 uid,channelId,formattedDate, documentType, documentNumber
         );
-    }}
+    }
+
+    private String getTagValue(String xml, String tagName) {
+        Pattern pattern = Pattern.compile(
+                "<\\w+:" + Pattern.quote(tagName) + ">(.*?)</\\w+:" + Pattern.quote(tagName) + ">",
+                Pattern.DOTALL
+        );
+
+        Matcher matcher = pattern.matcher(xml);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+}
