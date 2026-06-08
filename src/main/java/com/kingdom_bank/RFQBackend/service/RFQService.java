@@ -451,7 +451,9 @@ public class RFQService {
 
                 saveComments(request.getComments(),order,user);
                 log.info("Initiating sending of notification......");
-                String message = "RFQ OF ORDER "+order.getOrderId()+" successfully created";
+                String msgTemplate = environment.getProperty("msgTemplates.newDealRequest",
+                        "RFQ %s OF ORDER %s successfully created");
+                String message = String.format(msgTemplate,order.getCurrencyPair(),order.getOrderId());
                 notificationService.sendRoleNotification(message,order,constantUtil.TREASURY_DEALER,NotificationType.CREATE_RFQ);
                 log.info("Notification successfully sent to dealer.......");
 
@@ -537,7 +539,9 @@ public class RFQService {
 
             saveComments(request.getComment(),order,user);
             log.info("Initiating sending of notification......");
-            String message = "Dealer has updated the rate for ORDER "+order.getOrderId();
+            String msgTemplate = environment.getProperty("msgTemplates.dealerRate",
+                    "RFQ %s OF RATE %s ORDER %s has been updated");
+            String message = String.format(msgTemplate,order.getCurrencyPair(),order.getNegotiatedRate(),order.getOrderId());
             List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
             User teller = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(order.getTellerId(),statusList);
             if(teller!=null){
@@ -665,7 +669,9 @@ public class RFQService {
 
 
                     log.info("Initiating sending of notification......");
-                    String message = "Teller has approved the rate "+String.format("%.2f", existingOrder.getNegotiatedRate())+" for ORDER "+existingOrder.getOrderId();
+                    String msgTemplate = environment.getProperty("msgTemplates.approveDeal",
+                            "Teller has approved the rate %s for %s ORDER %s");
+                    String message = String.format(msgTemplate,String.format("%.2f", existingOrder.getNegotiatedRate()),existingOrder.getCurrencyPair(),existingOrder.getOrderId());
                     List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
                     User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
                     if(dealer!=null){
@@ -697,7 +703,10 @@ public class RFQService {
 
                 saveComments(request.getDescription(),existingOrder,loggedInUser);
                 log.info("Initiating sending of notification......");
-                String message = "Teller has rejected rate "+existingOrder.getNegotiatedRate()+" for ORDER "+existingOrder.getOrderId();
+                String msgTemplate = environment.getProperty("msgTemplates.rejectDeal",
+                        "Teller has rejected the rate %s for %s ORDER %s");
+                String message = String.format(msgTemplate,String.format("%.2f", existingOrder.getNegotiatedRate()),existingOrder.getCurrencyPair(),existingOrder.getOrderId());
+
                 List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
                 User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
                 if(dealer!=null){
@@ -718,7 +727,10 @@ public class RFQService {
 
                 saveComments(request.getDescription(),existingOrder,loggedInUser);
                 log.info("Initiating sending of notification......");
-                String message = "Teller has sent a rate request for ORDER "+existingOrder.getOrderId();
+                String msgTemplate = environment.getProperty("msgTemplates.negotiateRate",
+                        "Teller has sent a rate request for %s ORDER %s");
+                String message = String.format(msgTemplate,existingOrder.getCurrencyPair(),existingOrder.getOrderId());
+
                 List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
                 User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
                 if(dealer!=null){
@@ -829,7 +841,10 @@ public class RFQService {
 
 
                     log.info("Initiating sending of notification......");
-                    String message = "Teller has approved the rate "+String.format("%.2f", existingOrder.getNegotiatedRate())+" for ORDER "+existingOrder.getOrderId();
+                    String msgTemplate = environment.getProperty("msgTemplates.approveDeal",
+                            "Teller has approved the rate %s for %s ORDER %s");
+                    String message = String.format(msgTemplate,String.format("%.2f", existingOrder.getNegotiatedRate()),existingOrder.getCurrencyPair(),existingOrder.getOrderId());
+
                     List<Status> statusList = Collections.singletonList(constantUtil.ACTIVE);
                     User dealer = userRepo.findDistinctByUsernameEqualsIgnoreCaseAndStatusIn(existingOrder.getDealerId(),statusList);
                     if(dealer!=null){
