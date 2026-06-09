@@ -108,34 +108,33 @@ public class GetExchangeRateClient {
         SOAResponse soaResponse = new SOAResponse();
         try {
             // Get all buy rates (TTB)
-            Map<String, ExchangeRateItem> buyRates = getAllRatesByType("TTB");
+            Map<String, ExchangeRateItem> allRates = getAllRatesByType("TTB");
 
 
-            if (buyRates != null ) {
+            if (allRates != null ) {
                 List<Map<String, Object>> allPairs = new ArrayList<>();
-                HashSet<String> sellRates = new HashSet<>();
+                HashSet<String> allRatesSet = new HashSet<>();
 
                 // Process all buy rates first
-                for (String buyKey : buyRates.keySet()) {
-                    if(sellRates.add(buyKey)) {
-                    ExchangeRateItem buyRate = buyRates.get(buyKey);
-
+                for (String buyKey : allRates.keySet()) {
+                    ExchangeRateItem currentRate = allRates.get(buyKey);
+                    if(currentRate.getRateCode().equalsIgnoreCase("TTB") && allRatesSet.add(buyKey)) {
                     // Look for matching sell rate (check both direct and reversed key)
-                    String reversedKey = buyRate.getFromCurrency() + "_" + buyRate.getToCurrency();
-                    ExchangeRateItem sellRate = buyRates.get(reversedKey);
+                    String reversedKey = currentRate.getToCurrency() + "_" + currentRate.getFromCurrency();
+                    ExchangeRateItem sellRate = allRates.get(reversedKey);
 
                     Map<String, Object> pairData = new HashMap<>();
-                    pairData.put("fromCurrency", buyRate.getFromCurrency());
-                    pairData.put("toCurrency", buyRate.getToCurrency());
-                    pairData.put("combination", buyRate.getFromCurrency() + "/" + buyRate.getToCurrency());
-                    pairData.put("buyingRate", buyRate.getExchangeRate());
+                    pairData.put("fromCurrency", currentRate.getFromCurrency());
+                    pairData.put("toCurrency", currentRate.getToCurrency());
+                    pairData.put("combination", currentRate.getFromCurrency() + "/" + currentRate.getToCurrency());
+                    pairData.put("buyingRate", currentRate.getExchangeRate());
                     pairData.put("sellingRate", sellRate != null ? sellRate.getExchangeRate() : null);
 
                     allPairs.add(pairData);
 
-                    // Remove the matched sell rate to avoid duplicates
+                    // Add the matched sell rate to avoid duplicates
                     if (sellRate != null) {
-                        sellRates.add(reversedKey);
+                        allRatesSet.add(reversedKey);
                     }
                     }
                 }
