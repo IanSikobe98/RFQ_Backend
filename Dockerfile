@@ -18,6 +18,10 @@ COPY ${JAR_FILE} application.jar
 # CONFIG PROPERTIES | OPTIONAL
 COPY config/application.properties application.properties
 
+# SSL
+RUN mkdir -p /application/ssl
+COPY ssl/keystore.p12 /application/ssl/keystore.p12
+
 
 # RUN APPLICATION WHEN CONTAINER LAUNCHES
 CMD ["java","-jar","application.jar","--spring.config.location=file:application.properties"]

@@ -51,8 +51,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private void sendWelcomeMessage(WebSocketSession session, String userId) {
         try {
             Map<String, Object> welcomeMessage = Map.of(
-                    "type", "welcome",
-                    "message", "WebSocket connection established successfully",
+                    "notificationType", "Welcome",
+                    "message", "Connection established successfully",
                     "userId", userId,
                     "sessionId", session.getId(),
                     "timestamp", System.currentTimeMillis()
