@@ -1,0 +1,239 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rfq-backend
+  labels:
+    app: rfq-backend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: rfq-backend
+  template:
+    metadata:
+      labels:
+        app: rfq-backend
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: rfq-backend
+          image: kblregistry.kingdombankltd.local:5000/cbs/rfq-backend-prd-5.0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9072
+              name: backend
+          env:
+            # Database secrets
+            - name: spring.datasource.url
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.datasource.url
+            - name: spring.datasource.username
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.datasource.username
+            - name: spring.datasource.password
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.datasource.password
+            - name: rfq.app.staticOtpValue
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: rfq.app.staticOtpValue
+            - name: spring.mail.username
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.mail.username
+            - name: spring.mail.password
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.mail.password
+            - name: spring.mail.from
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: spring.mail.from
+            - name: jwt.secretKey
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: jwt.secretKey
+            - name: soa.auth.client_id
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: soa.auth.client_id
+            - name: soa.auth.client_secret
+              valueFrom:
+                secretKeyRef:
+                  name: rfq-backend-secret
+                  key: soa.auth.client_secret
+
+            # Non-sensitive config
+            - name: spring.datasource.driver-class-name
+              value: "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+            - name: spring.datasource.hikari.maximum-pool-size
+              value: "10"
+            - name: spring.datasource.hikari.minimum-idle
+              value: "5"
+            - name: spring.datasource.hikari.idle-timeout
+              value: "30000"
+            - name: spring.datasource.hikari.max-lifetime
+              value: "1800000"
+            - name: spring.jpa.hibernate.ddl-auto
+              value: "update"
+            - name: spring.jpa.show-sql
+              value: "false"
+            - name: spring.main.allow-bean-definition-overriding
+              value: "true"
+            - name: rfq.app.isStaticOtp
+              value: "false"
+            - name: rfq.app.OtpExpiryTime
+              value: "5"
+            - name: soa.sms.retries
+              value: "1"
+            - name: spring.mail.host
+              value: "smtp.office365.com"
+            - name: spring.mail.port
+              value: "587"
+
+
+            - name: spring.mail.properties.mail.debug
+              value: "true"
+            - name: spring.mail.properties.mail.transport.protocol
+              value: "smtp"
+            - name: spring.mail.properties.mail.smtp.auth
+              value: "true"
+            - name: spring.mail.properties.mail.smtp.starttls.enable
+              value: "true"
+            - name: spring.mail.properties.mail.smtp.timeout
+              value: "5000"
+            - name: spring.mail.properties.mail.smtp.ssl.protocols
+              value: "TLSv1.2"
+
+            - name: rfq.duplication.threshhold
+              value: "300"
+
+            - name: jwt.tokenExpiration
+              value: "25000000"
+
+            - name: ad.domain
+              value: "test.kingdombankltd.local"
+            - name: ad.url
+              value: "ldap://10.0.1.149:389"
+
+            - name: params.admin_role
+              value: "SYSTEM_ADMIN"
+
+            - name: threads.approvals.max-threads
+              value: "30"
+
+            - name: msgTemplates.adUserRegistration
+              value: "Dear %s, you have been successfully created on the CO-OP BANK SOKO PLATFORM.Kindly use your AD Credentials to Login"
+            - name: msgTemplates.newDealRequest
+              value: "RFQ for %s ORDER %s successfully created"
+            - name: msgTemplates.dealerRate
+              value: "Deal Status for %s rate of %s ORDER %s is pending your action."
+            - name: msgTemplates.approveDeal
+              value: "Initiator has accepted a rate of %s for %s ORDER %s"
+            - name: msgTemplates.rejectDeal
+              value: "Initiator has rejected a rate of %s for %s ORDER %s"
+            - name: msgTemplates.negotiateRate
+              value: "Initiator has sent a negotiation request for %s ORDER %s"
+
+            - name: soa.systemcode
+              value: "076"
+
+            - name: soa.sms.username
+              value: "omni"
+            - name: soa.sms.password
+              value: "omni123"
+            - name: soa.auth.grant_type
+              value: "client_credentials"
+            - name: soa.auth.url
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/token/1.0/generate"
+
+            - name: soa.sanctionVerification.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/ID3/Pep/verifications/Post/1.0"
+            - name: soa.accountdetails.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/accountdetails/1.0/details"
+            - name: soa.getCustomerID.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/cif/details/1.0/inquiry"
+            - name: soa.getCustomerAccounts.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/accounts/1.0/list"
+            - name: soa.getExchangeRate.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/exchangerates/1.0/currencyexchangerate"
+            - name: soa.getAllExchangeRates.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/currencyexchangerates/1.0/list"
+            - name: soa.postDealCode.endpoint
+              value: "https://kbsoapreprod.kingdombankltd.co.ke:3225/rfq/fxqdeal/1.0/insert"
+
+            - name: soa.channel.id
+              value: "K13"
+
+            - name: rfq.mostRecentDealCode
+              value: "0000/00001"
+
+            - name: cors.allowed-origins
+              value: "http://localhost:8080,http://10.200.200.120,http://10.0.1.209,https://10.200.200.120,https://10.0.1.209,https://rfq.kingdombankltd.co.ke"
+
+            - name: autoExpireOrders.activate
+              value: "1"
+            - name: autoExpireOrders.fixedDelay
+              value: "5000"
+
+            - name: autoRetryOrders.activate
+              value: "0"
+            - name: autoRetryOrders.fixedDelay
+              value: "1000"
+
+            - name: eod.weekdays
+              value: "17:00"
+            - name: eod.weekends
+              value: "13:00"
+
+            - name: server.ssl.enabled
+              value: "true"
+            - name: server.ssl.key-store
+              value: "file:/application/ssl/keystore.p12"
+            - name: server.ssl.key-store-password
+              value: "ian"
+            - name: server.ssl.key-store-type
+              value: "PKCS12"
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 300Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rfq-backend-svc
+spec:
+  selector:
+    app: rfq-backend
+  ports:
+    - name: backend
+      protocol: TCP
+      port: 9072
+      targetPort: 9072
