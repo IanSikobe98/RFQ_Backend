@@ -31,6 +31,7 @@ public class ApprovalService {
 
     private final UserService userService;
     private final RFQService rfqService;
+    private final BranchService branchService;
     private final Environment environment;
     private ExecutorService executorService;
 
@@ -74,6 +75,13 @@ public class ApprovalService {
                 case APPROVED_DEALS:
                     for (String id : ids) {
                         Callable<ApiResponse> task = () -> rfqService.approveOrRejectDealRequests(request,user, Integer.valueOf(id));
+                        futures.add(executorService.submit(task));
+                    }
+                    break;
+
+                case BRANCH:
+                    for (String id : ids) {
+                        Callable<ApiResponse> task = () -> branchService.approveOrRejectBranch(request,user, Integer.valueOf(id));
                         futures.add(executorService.submit(task));
                     }
                     break;

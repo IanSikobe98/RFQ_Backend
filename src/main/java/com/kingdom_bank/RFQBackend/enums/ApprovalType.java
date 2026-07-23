@@ -10,7 +10,8 @@ public enum ApprovalType {
     ROLE_UPDATE("ROLE_UPDATE"),
     USER("USER"),
     USER_UPDATE("USER_UPDATE"),
-    APPROVED_DEALS("APPROVED_DEALS")
+    APPROVED_DEALS("APPROVED_DEALS"),
+    BRANCH("BRANCH")
     ;
     private final String value;
 }
