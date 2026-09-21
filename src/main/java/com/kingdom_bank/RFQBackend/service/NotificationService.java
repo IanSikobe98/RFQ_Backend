@@ -84,7 +84,7 @@ public class NotificationService {
 
     public void sendMailToUsersUnderRole(Role role,NotificationType  type,String message) {
         log.info("Sending email to users under role......... {}",role);
-        List<User> users = userRepo.findByRole_RoleId(role.getRoleId());
+        List<User> users = userRepo.findByRole_RoleIdAndStatus(role.getRoleId(),constantUtil.ACTIVE);
         if(!users.isEmpty()){
             users.forEach(user->{
                 mailService.sendMail(user.getEmail(),type.name(),message);

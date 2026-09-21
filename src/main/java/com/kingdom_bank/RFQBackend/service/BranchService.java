@@ -113,16 +113,23 @@ public class BranchService {
 
             Branch branch = existingBranch.get();
             Optional<Branch> existingBranchNames= branchRepo.findByBranchNameAndStatusId(request.getBranchName(), constantUtil.ACTIVE);
-            if(existingBranchNames.isPresent()){
+            if(existingBranchNames.isPresent() && !branch.getBranchName().equalsIgnoreCase(request.getBranchName())){
                 log.info("Branch with name {} already exists", request.getBranchName());
                 response.setResponseMessage("Branch with name " + request.getBranchName() + " already exists");
                 response.setResponseCode(ApiResponseCode.FAIL);
                 return response;
             }
 
+            //If it is a status change
+            if (!Objects.isNull(request.getStatus())) {
+                response = changeBranchStatus(branch,user,request,existingBranchNames);
+                return response;
+            }
+
+
             Optional<Branch> existingBranchCode = branchRepo.findByBranchCodeAndStatusId(request.getBranchName(), constantUtil.ACTIVE);
 
-            if(existingBranchCode.isPresent()){
+            if(existingBranchCode.isPresent() && !branch.getBranchCode().equalsIgnoreCase(request.getBranchCode())){
                 log.info("Branch with code {} already exists", request.getBranchName());
                 response.setResponseMessage("Branch with code " + request.getBranchName() + " already exists");
                 response.setResponseCode(ApiResponseCode.FAIL);
@@ -158,6 +165,49 @@ public class BranchService {
         }
         return response;
     }
+
+    public ApiResponse changeBranchStatus(Branch branch,User loggedInUser , BranchRequest request, Optional<Branch> existingBranchNames) {
+        log.info("Changing branch status  for  request {}", request);
+        ApiResponse response = new ApiResponse();
+        try {
+            if(branch.getStatusId().equals(constantUtil.PENDING_APPROVAL)){
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("Branch with name "+ request.getBranchName()+ " is awaiting approval");
+                return response;
+            }
+
+            Status status = commonTasks.getStatus(request.getStatus());
+            if (!Objects.isNull(status)) {
+
+                BranchTemp branchTemp = BranchTemp.builder()
+                        .entityStatus(status.getStatusId())
+                        .status(constantUtil.PENDING_APPROVAL)
+                        .branch(branch)
+                        .action(EntityActions.CHANGE_STATUS.getValue())
+                        .dateCreated(new Date())
+                        .createdBy(loggedInUser)
+                        .build();
+
+                branchTempRepo.save(branchTemp);
+                log.info("Branch change status successfully initiated for {}",branch.getBranchName());
+
+                response.setResponseCode(ApiResponseCode.SUCCESS);
+                response.setResponseMessage("Branch status Change Request successfully created");
+            }
+            else{
+                response.setResponseCode(ApiResponseCode.FAIL);
+                response.setResponseMessage("New status does not "+ request.getStatus()+ " does not  exists");
+            }
+        }
+        catch (Exception e){
+            log.error("ERROR OCCURRED DURING BRANCH DATA UPDATE:: {}" ,e.getMessage());
+            e.printStackTrace();
+            response.setResponseCode(ApiResponseCode.FAIL);
+            response.setResponseMessage("Sorry,Error occurred while updating the branch");
+        }
+        return response;
+    }
+
 
 
     public ApiResponse approveOrRejectBranch(ApprovalRequest request, User loggedInUser, Integer id){
@@ -212,6 +262,24 @@ public class BranchService {
                     log.info("Branch {} edit update successfully  approved",existingBranch.getId());
                     response.setResponseMessage("Branch update successfully Approved.");
                 }
+
+                else if(existingBranch.getAction().equalsIgnoreCase(EntityActions.CHANGE_STATUS.getValue())){
+
+                    Status status = commonTasks.getStatus(existingBranch.getEntityStatus());
+                    if(Objects.isNull(status)){
+                        response.setResponseCode(ApiResponseCode.FAIL);
+                        response.setResponseMessage("Status for role not found");
+                        return response;
+                    }
+                    Branch currentBranch = existingBranch.getBranch();
+                    currentBranch.setStatusId(status);
+                    currentBranch.setUpdatedBy(existingBranch.getCreatedBy().getUsername());
+                    currentBranch.setDateUpdated(existingBranch.getDateApproved());
+                    branchRepo.save(currentBranch);
+                    log.info("Branch {} change status update successfully  approved",existingBranch.getId());
+                    response.setResponseMessage("Branch update successfully Approved.");
+                }
+
                 response.setResponseCode(ApiResponseCode.SUCCESS);
                 existingBranch.setDateApproved(new Date());
                 existingBranch.setApprovedBy(loggedInUser.getUsername());
@@ -294,12 +362,18 @@ public class BranchService {
                 branchList = branchTempRepo.findAll(Sort.by(Sort.Direction.DESC, "dateCreated"));
             }
 
-//            branchList.forEach(branchTemp -> {
-//                Status status = commonTasks.getStatus(branchTemp.getEntityStatus());
-//                if(!Objects.isNull(status)){
-//                    branchTemp.setEntityStatusName(status.getStatusName());
-//                }
-//            });
+            branchList.forEach(branchTemp -> {
+                if(branchTemp.getEntityStatus()!=null) {
+                    Status status = commonTasks.getStatus(branchTemp.getEntityStatus());
+                    if (!Objects.isNull(status)) {
+                        branchTemp.setEntityStatusName(status.getStatusName());
+                        branchTemp.setBranchName(branchTemp.getBranch().getBranchName());
+                        branchTemp.setBranchCode(branchTemp.getBranch().getBranchCode());
+                        branchTemp.setBankCode(branchTemp.getBranch().getBankCode());
+                    }
+                }
+            });
+
 
 
             response.setResponseCode(ApiResponseCode.SUCCESS);

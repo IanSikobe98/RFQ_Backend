@@ -15,4 +15,6 @@ public class BranchRequest {
     private String branchName;
     private Integer id;
     private String comment;
+    private Integer status;
+    private String statusName;
 }
